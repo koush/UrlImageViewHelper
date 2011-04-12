@@ -28,6 +28,7 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 public class UrlImageViewHelperSample extends Activity {
+    // turn a stream into a string
     private static String readToEnd(InputStream input) throws IOException
     {
         DataInputStream dis = new DataInputStream(input);
@@ -61,6 +62,7 @@ public class UrlImageViewHelperSample extends Activity {
             else
                 iv = (ImageView)convertView;
             
+            // yep, that's it. it handles the downloading and showing an interstitial image automagically.
             UrlImageViewHelper.setUrlDrawable(iv, getItem(position), R.drawable.loading);
             
             return iv;
@@ -83,10 +85,12 @@ public class UrlImageViewHelperSample extends Activity {
         search.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
+                // background the search call!
                 Thread thread = new Thread() {
                     @Override
                     public void run() {
                         try {
+                            // clear existing results
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -94,6 +98,7 @@ public class UrlImageViewHelperSample extends Activity {
                                 }
                             });
                             
+                            // do a google image search, get the ~10 paginated results
                             int start = 0;
                             while (start < 10) {
                                 DefaultHttpClient client = new DefaultHttpClient();
@@ -110,6 +115,7 @@ public class UrlImageViewHelperSample extends Activity {
                                     urls.add(result.getString("url"));
                                 }
                                 
+                                // add the results to the adapter
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
@@ -124,6 +130,7 @@ public class UrlImageViewHelperSample extends Activity {
 
                         }
                         catch (final Exception ex) {
+                            // explodey error, lets toast it
                             runOnUiThread(new Runnable() {
                                @Override
                                 public void run() {
