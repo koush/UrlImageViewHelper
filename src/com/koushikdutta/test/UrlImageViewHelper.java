@@ -74,6 +74,10 @@ public final class UrlImageViewHelper {
         setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, CACHE_DURATION_THREE_DAYS);
     }
     
+    public static void setUrlDrawable(final ImageView imageView, final String url) {
+        setUrlDrawable(imageView.getContext(), imageView, url, null, CACHE_DURATION_THREE_DAYS);
+    }
+    
     public static void loadUrlDrawable(final Context context, final String url) {
         setUrlDrawable(context, null, url, null, CACHE_DURATION_THREE_DAYS);
     }

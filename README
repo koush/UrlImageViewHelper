@@ -1,0 +1,22 @@
+UrlImageViewHelper will fill an ImageView with an image that is found at a URL.
+
+UrlImageViewHelper will automatically download, save, and cache all the image urls
+the BitmapDrawables. Memory is automatically managed by using a weak reference
+hash table, so as soon as the image is no longer used, it will be garbage collected
+automatically.
+
+Usage is simple:
+
+UrlImageViewHelper.setUrlDrawable(imageView, "http://example.com/image.png");
+
+Want a placeholder image while it is being downloaded?
+
+UrlImageViewHelper.setUrlDrawable(imageView, "http://example.com/image.png", R.drawable.placeholder);
+
+Don't want to use a placeholder resource, but a drawable instead?
+
+UrlImageViewHelper.setUrlDrawable(imageView, "http://example.com/image.png", drawable);
+
+What if you want to preload images for snazzy fast loading?
+
+UrlImageViewHelper.loadUrlDrawable(context, "http://example.com/image.png");
