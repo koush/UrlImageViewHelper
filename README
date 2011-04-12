@@ -26,3 +26,6 @@ UrlImageViewHelper.loadUrlDrawable(context, "http://example.com/image.png");
 What if you only want to cache the images for a minute?
 
 UrlImageViewHelper.setUrlDrawable(imageView, "http://example.com/image.png", /* This an optional interstitial argument */ null, 60000);
+
+
+TODO: An http connection manager for connection reuse might be handy.
