@@ -61,7 +61,7 @@ public final class UrlImageViewHelper {
         return new BitmapDrawable(mResources, bitmap);
     }
     
-    public static final int CACHE_DURATION_INFINITE = 0;
+    public static final int CACHE_DURATION_INFINITE = Integer.MAX_VALUE;
     public static final int CACHE_DURATION_ONE_DAY = 1000 * 60 * 60 * 24;
     public static final int CACHE_DURATION_TWO_DAYS = CACHE_DURATION_ONE_DAY * 2;
     public static final int CACHE_DURATION_THREE_DAYS = CACHE_DURATION_ONE_DAY * 3;
@@ -130,7 +130,7 @@ public final class UrlImageViewHelper {
         File file = context.getFileStreamPath(filename);
         if (file.exists()) {
             try {
-                if (cacheDurationMs == 0 || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
+                if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
                     Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
                     FileInputStream  fis = context.openFileInput(filename);
                     BitmapDrawable drawable = loadDrawableFromStream(context, fis);
