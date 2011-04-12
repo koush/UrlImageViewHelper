@@ -3,9 +3,9 @@ UrlImageViewHelper will fill an ImageView with an image that is found at a URL.
 The sample will do a Google Image Search and load/show the results asynchronously.
 
 UrlImageViewHelper will automatically download, save, and cache all the image urls
-the BitmapDrawables. Memory is automatically managed by using a weak reference
-hash table, so as soon as the image is no longer used, it will be garbage collected
-automatically.
+the BitmapDrawables. Duplicate urls will not be loaded into memory twice.
+Bitmap memory is managed by using a weak reference hash table, so as soon as the
+image is no longer used by you, it will be garbage collected automatically.
 
 Usage is simple:
 
