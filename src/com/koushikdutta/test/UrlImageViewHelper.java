@@ -112,7 +112,7 @@ public final class UrlImageViewHelper {
     private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, Drawable defaultDrawable, long cacheDurationMs) {
     	if (isNullOrEmpty(url)) {
     	    if (imageView != null)
-    	        imageView.setImageDrawable(null);
+    	        imageView.setImageDrawable(defaultDrawable);
             return;
         }
         
