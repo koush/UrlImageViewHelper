@@ -221,7 +221,7 @@ public final class UrlImageViewHelper {
                     if (result != null) {
                         final Drawable newImage = result;
                         final ImageView imageView = iv;
-           	        	imageView.setImageDrawable(newImage);
+                        imageView.setImageDrawable(newImage);
                     }
                 }
             }
