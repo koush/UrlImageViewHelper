@@ -110,7 +110,7 @@ public final class UrlImageViewHelper {
         return (s == null || s.equals("") || s.equals("null") || s.equals("NULL"));
     }
     
-    private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, Drawable defaultDrawable, long cacheDurationMs) {
+    private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, long cacheDurationMs) {
     	if (isNullOrEmpty(url)) {
     	    if (imageView != null)
     	        imageView.setImageDrawable(defaultDrawable);
@@ -206,6 +206,8 @@ public final class UrlImageViewHelper {
             }
             
             protected void onPostExecute(Drawable result) {
+                if (result == null)
+                    result = defaultDrawable;
                 mPendingDownloads.remove(url);
                 cache.put(url, result);
                 for (ImageView iv: downloads) {
