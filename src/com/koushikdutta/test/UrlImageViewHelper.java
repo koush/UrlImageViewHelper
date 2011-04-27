@@ -111,6 +111,9 @@ public final class UrlImageViewHelper {
     }
     
     private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, long cacheDurationMs) {
+        // disassociate this ImageView from any pending downloads
+        mPendingViews.remove(imageView);
+
     	if (isNullOrEmpty(url)) {
     	    if (imageView != null)
     	        imageView.setImageDrawable(defaultDrawable);
