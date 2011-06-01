@@ -8,7 +8,7 @@ package com.koushikdutta.test;
 
 import android.graphics.drawable.Drawable;
 
-public final class UrlImageCache extends WeakReferenceHashTable<String, Drawable> {
+public final class UrlImageCache extends SoftReferenceHashTable<String, Drawable> {
     private static UrlImageCache mInstance = new UrlImageCache();
     
     public static UrlImageCache getInstance() {
