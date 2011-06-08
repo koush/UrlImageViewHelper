@@ -1,4 +1,4 @@
-package com.koushikdutta.test;
+package com.koushikdutta.urlimageviewhelper;
 
 import java.lang.ref.SoftReference;
 import java.util.Hashtable;

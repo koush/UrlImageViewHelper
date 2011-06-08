@@ -1,10 +1,4 @@
-/*
- * UrlImageCache.java
- * 
- * Copyright 2010, BuddyTV. All Rights Reserved
- * Created 12/13/2010 Mike Markley
- */
-package com.koushikdutta.test;
+package com.koushikdutta.urlimageviewhelper;
 
 import android.graphics.drawable.Drawable;
 

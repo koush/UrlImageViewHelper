@@ -27,6 +27,8 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
+
 public class UrlImageViewHelperSample extends Activity {
     // turn a stream into a string
     private static String readToEnd(InputStream input) throws IOException
