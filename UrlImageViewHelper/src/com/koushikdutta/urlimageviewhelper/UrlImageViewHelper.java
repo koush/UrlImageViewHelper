@@ -115,7 +115,32 @@ public final class UrlImageViewHelper {
         return "" + url.hashCode() + ".urlimage";
     }
 
+
+    private static void cleanup(Context context) {
+        if (mHasCleaned)
+            return;
+        mHasCleaned = true;
+        try {
+            // purge any *.urlimage files over a week old
+            String[] files = context.getFilesDir().list();
+            if (files == null)
+                return;
+            for (String file : files) {
+                if (!file.endsWith(".urlimage"))
+                    continue;
+
+                File f = new File(file);
+                if (System.currentTimeMillis() > f.lastModified() + CACHE_DURATION_ONE_WEEK)
+                    f.delete();
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, long cacheDurationMs) {
+        cleanup(context);
         // disassociate this ImageView from any pending downloads
         if (imageView != null)
             mPendingViews.remove(imageView);
