@@ -115,7 +115,6 @@ public final class UrlImageViewHelper {
         return "" + url.hashCode() + ".urlimage";
     }
 
-
     private static void cleanup(Context context) {
         if (mHasCleaned)
             return;
