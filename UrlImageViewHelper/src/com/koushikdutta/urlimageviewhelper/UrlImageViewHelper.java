@@ -13,7 +13,9 @@ import java.util.Hashtable;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.client.params.HttpClientParams;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpParams;
 
 import android.app.Activity;
 import android.content.Context;
@@ -23,8 +25,10 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.http.AndroidHttpClient;
 import android.os.AsyncTask;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.widget.ImageView;
 
 public final class UrlImageViewHelper {
@@ -213,17 +217,20 @@ public final class UrlImageViewHelper {
         AsyncTask<Void, Void, Drawable> downloader = new AsyncTask<Void, Void, Drawable>() {
             @Override
             protected Drawable doInBackground(Void... params) {
+                AndroidHttpClient client = AndroidHttpClient.newInstance(context.getPackageName());
                 try {
-                    DefaultHttpClient client = new DefaultHttpClient();
                     HttpGet get = new HttpGet(url);
+                    final HttpParams httpParams = new BasicHttpParams();
+                    HttpClientParams.setRedirecting(httpParams, true);
+                    get.setParams(httpParams);
                     HttpResponse resp = client.execute(get);
                     int status = resp.getStatusLine().getStatusCode();
                     if(status != HttpURLConnection.HTTP_OK){
-                        //Log.i(LOGTAG, "Couldn't download image from Server: " + url + " Reason: " + resp.getStatusLine().getReasonPhrase() + " / " + status);
+//                        Log.i(LOGTAG, "Couldn't download image from Server: " + url + " Reason: " + resp.getStatusLine().getReasonPhrase() + " / " + status);
                         return null;
                     }
                     HttpEntity entity = resp.getEntity();
-                    //Log.i(LOGTAG, url + " Image Content Length: " + entity.getContentLength());
+//                    Log.i(LOGTAG, url + " Image Content Length: " + entity.getContentLength());
                     InputStream is = entity.getContent();
                     FileOutputStream fos = context.openFileOutput(filename, Context.MODE_PRIVATE);
                     copyStream(is, fos);
@@ -233,8 +240,11 @@ public final class UrlImageViewHelper {
                     return loadDrawableFromStream(context, fis);
                 }
                 catch (Exception ex) {
-                    //Log.e(LOGTAG, "Exception during Image download of " + url, ex);
+//                    Log.e(LOGTAG, "Exception during Image download of " + url, ex);
                     return null;
+                }
+                finally {
+                    client.close();
                 }
             }
 
