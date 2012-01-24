@@ -55,7 +55,7 @@ public final class UrlImageViewHelper {
         Activity act = (Activity)context;
         act.getWindowManager().getDefaultDisplay().getMetrics(mMetrics);
         AssetManager mgr = context.getAssets();
-        mResources = new Resources(mgr, mMetrics, null);
+        mResources = new Resources(mgr, mMetrics, context.getResources().getConfiguration());
     }
 
     private static BitmapDrawable loadDrawableFromStream(Context context, InputStream stream) {
