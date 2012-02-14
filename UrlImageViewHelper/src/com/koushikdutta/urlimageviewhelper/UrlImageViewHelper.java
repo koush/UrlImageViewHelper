@@ -132,7 +132,7 @@ public final class UrlImageViewHelper {
                 if (!file.endsWith(".urlimage"))
                     continue;
 
-                File f = new File(file);
+                File f = new File(context.getFilesDir().getAbsolutePath() + '/' + file);
                 if (System.currentTimeMillis() > f.lastModified() + CACHE_DURATION_ONE_WEEK)
                     f.delete();
             }
