@@ -1,22 +1,6 @@
 package com.koushikdutta.urlimageviewhelper;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.util.ArrayList;
-import java.util.Hashtable;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.params.HttpClientParams;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
-
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetManager;
@@ -28,9 +12,27 @@ import android.graphics.drawable.Drawable;
 import android.net.http.AndroidHttpClient;
 import android.os.AsyncTask;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.widget.ImageView;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.params.HttpClientParams;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpParams;
+
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.util.ArrayList;
+import java.util.Hashtable;
+
+@TargetApi(8)
 public final class UrlImageViewHelper {
     private static final String LOGTAG = "UrlImageViewHelper";
     public static int copyStream(InputStream input, OutputStream output) throws IOException
@@ -118,6 +120,153 @@ public final class UrlImageViewHelper {
     public static String getFilenameForUrl(String url) {
         return "" + url.hashCode() + ".urlimage";
     }
+    
+    private static class UrlDrawableFetcher extends AsyncTask<Void, Void, Drawable> {
+        
+        private Context mContext;
+        private final ImageView mImageView;
+        private final Drawable mDefaultDrawable;
+        private final long mCacheDuration;
+        private final String mUrl;
+
+        public UrlDrawableFetcher(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, final long cacheDurationMs)
+        {
+            mContext = context;
+            mImageView = imageView;
+            mUrl = url;
+            mDefaultDrawable = defaultDrawable;
+            mCacheDuration = cacheDurationMs;
+        }
+
+        @Override
+        protected Drawable doInBackground(Void... urls) {
+            final String filename = getFilenameForUrl(mUrl);
+
+            Drawable drawable = checkFilesystem(filename);
+            if (drawable != null)
+            {
+                return drawable;
+            }
+
+            ArrayList<ImageView> currentDownload = mPendingDownloads.get(mUrl);
+            if (currentDownload != null) {
+                // Also, multiple vies may be waiting for this url.
+                // So, let's maintain a list of these views.
+                // When the url is downloaded, it sets the imagedrawable for
+                // every view in the list. It needs to also validate that
+                // the imageview is still waiting for this url.
+                if (mImageView != null)
+                    currentDownload.add(mImageView);
+                return null;
+            }
+            final ArrayList<ImageView> downloads = new ArrayList<ImageView>();
+            if (mImageView != null) {
+                downloads.add(mImageView);
+            }
+            mPendingDownloads.put(mUrl, downloads);
+            
+            return getFileFromInternet(filename);
+        }
+
+        private Drawable getFileFromInternet(final String filename) {
+            AndroidHttpClient client = null;
+            InputStream is = null;
+            FileOutputStream fos = null;
+            FileInputStream fis = null;
+            try {
+                client = AndroidHttpClient.newInstance(mContext.getPackageName());
+                HttpGet get = new HttpGet(mUrl);
+                final HttpParams httpParams = new BasicHttpParams();
+                HttpClientParams.setRedirecting(httpParams, true);
+                get.setParams(httpParams);
+                HttpResponse resp = client.execute(get);
+                int status = resp.getStatusLine().getStatusCode();
+                if(status != HttpURLConnection.HTTP_OK){
+//                    Log.i(LOGTAG, "Couldn't download image from Server: " + url + " Reason: " + resp.getStatusLine().getReasonPhrase() + " / " + status);
+                    return null;
+                }
+                HttpEntity entity = resp.getEntity();
+//                Log.i(LOGTAG, url + " Image Content Length: " + entity.getContentLength());
+                is = entity.getContent();
+                fos = mContext.openFileOutput(filename, Context.MODE_PRIVATE);
+                copyStream(is, fos);
+                fos.close();
+                is.close();
+                fis = mContext.openFileInput(filename);
+                return loadDrawableFromStream(mContext, fis);
+            }
+            catch (Exception ex) {
+//                Log.e(LOGTAG, "Exception during Image download of " + url, ex);
+                return null;
+            }
+            finally {
+                if(client != null) { client.close(); }
+                safeClose(is);
+                safeClose(fos);
+                safeClose(fis);
+            }
+        }
+        
+        private static void safeClose(Closeable c) {
+            if (c == null) { return; }
+            try
+            {
+                c.close();
+            }
+            catch (IOException e)
+            {
+                //Log.e(LOGTAG, "Error closing file", e);
+            }
+        }
+
+        private Drawable checkFilesystem(final String filename) {
+            File file = mContext.getFileStreamPath(filename);
+
+            if (file.exists()) {
+                try {
+                    if (mCacheDuration == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + mCacheDuration) {
+                        //Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
+                        FileInputStream  fis = mContext.openFileInput(filename);
+                        BitmapDrawable drawable = loadDrawableFromStream(mContext, fis);
+                        fis.close();
+                        return drawable;
+                    }
+                    else {
+                        //Log.i(LOGTAG, "File cache has expired. Refreshing.");
+                    }
+                }
+                catch (Exception ex) {
+                }
+            }
+            return null;
+        }
+        
+        @Override
+        protected void onPostExecute(Drawable result) {
+            if (result == null)
+                result = mDefaultDrawable;
+            final UrlImageCache cache = UrlImageCache.getInstance();
+            mPendingDownloads.remove(mUrl);
+            cache.put(mUrl, result);
+            final ArrayList<ImageView> downloads = new ArrayList<ImageView>();
+            for (ImageView iv: downloads) {
+                // validate the url it is waiting for
+                String pendingUrl = mPendingViews.get(iv);
+                if (!mUrl.equals(pendingUrl)) {
+                    //Log.i(LOGTAG, "Ignoring out of date request to update view for " + url);
+                    continue;
+                }
+                mPendingViews.remove(iv);
+                if (result != null) {
+                    final Drawable newImage = result;
+                    final ImageView imageView = iv;
+                    imageView.setImageDrawable(newImage);
+                }
+            }
+            mImageView.setImageDrawable(result);
+        }
+        
+    }
 
     private static void cleanup(Context context) {
         if (mHasCleaned)
@@ -143,7 +292,13 @@ public final class UrlImageViewHelper {
     }
 
     private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, long cacheDurationMs) {
-        cleanup(context);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                cleanup(context);
+            }}).start();
+        
+        
         // disassociate this ImageView from any pending downloads
         if (imageView != null)
             mPendingViews.remove(imageView);
@@ -162,114 +317,22 @@ public final class UrlImageViewHelper {
                 imageView.setImageDrawable(d);
             return;
         }
-
-        final String filename = getFilenameForUrl(url);
-
-        File file = context.getFileStreamPath(filename);
-        if (file.exists()) {
-            try {
-                if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
-                    //Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
-                    FileInputStream  fis = context.openFileInput(filename);
-                    BitmapDrawable drawable = loadDrawableFromStream(context, fis);
-                    fis.close();
-                    if (imageView != null)
-                        imageView.setImageDrawable(drawable);
-                    cache.put(url, drawable);
-                    return;
-                }
-                else {
-                    //Log.i(LOGTAG, "File cache has expired. Refreshing.");
-                }
-            }
-            catch (Exception ex) {
-            }
+        
+        // null it while it is downloading
+        if (imageView != null) {
+            imageView.setImageDrawable(defaultDrawable);
+            mPendingViews.put(imageView, url);
         }
 
-        // null it while it is downloading
-        if (imageView != null)
-            imageView.setImageDrawable(defaultDrawable);
+        UrlDrawableFetcher fetcher = new UrlDrawableFetcher(context, imageView, url, defaultDrawable, cacheDurationMs);
+        fetcher.execute();
+        // XXX: PUT HERE THE ASYNCTASK
+
 
         // since listviews reuse their views, we need to 
         // take note of which url this view is waiting for.
         // This may change rapidly as the list scrolls or is filtered, etc.
         //Log.i(LOGTAG, "Waiting for " + url);
-        if (imageView != null)
-            mPendingViews.put(imageView, url);
-
-        ArrayList<ImageView> currentDownload = mPendingDownloads.get(url);
-        if (currentDownload != null) {
-            // Also, multiple vies may be waiting for this url.
-            // So, let's maintain a list of these views.
-            // When the url is downloaded, it sets the imagedrawable for
-            // every view in the list. It needs to also validate that
-            // the imageview is still waiting for this url.
-            if (imageView != null)
-                currentDownload.add(imageView);
-            return;
-        }
-
-        final ArrayList<ImageView> downloads = new ArrayList<ImageView>();
-        if (imageView != null)
-            downloads.add(imageView);
-        mPendingDownloads.put(url, downloads);
-
-        AsyncTask<Void, Void, Drawable> downloader = new AsyncTask<Void, Void, Drawable>() {
-            @Override
-            protected Drawable doInBackground(Void... params) {
-                AndroidHttpClient client = AndroidHttpClient.newInstance(context.getPackageName());
-                try {
-                    HttpGet get = new HttpGet(url);
-                    final HttpParams httpParams = new BasicHttpParams();
-                    HttpClientParams.setRedirecting(httpParams, true);
-                    get.setParams(httpParams);
-                    HttpResponse resp = client.execute(get);
-                    int status = resp.getStatusLine().getStatusCode();
-                    if(status != HttpURLConnection.HTTP_OK){
-//                        Log.i(LOGTAG, "Couldn't download image from Server: " + url + " Reason: " + resp.getStatusLine().getReasonPhrase() + " / " + status);
-                        return null;
-                    }
-                    HttpEntity entity = resp.getEntity();
-//                    Log.i(LOGTAG, url + " Image Content Length: " + entity.getContentLength());
-                    InputStream is = entity.getContent();
-                    FileOutputStream fos = context.openFileOutput(filename, Context.MODE_PRIVATE);
-                    copyStream(is, fos);
-                    fos.close();
-                    is.close();
-                    FileInputStream  fis = context.openFileInput(filename);
-                    return loadDrawableFromStream(context, fis);
-                }
-                catch (Exception ex) {
-//                    Log.e(LOGTAG, "Exception during Image download of " + url, ex);
-                    return null;
-                }
-                finally {
-                    client.close();
-                }
-            }
-
-            protected void onPostExecute(Drawable result) {
-                if (result == null)
-                    result = defaultDrawable;
-                mPendingDownloads.remove(url);
-                cache.put(url, result);
-                for (ImageView iv: downloads) {
-                    // validate the url it is waiting for
-                    String pendingUrl = mPendingViews.get(iv);
-                    if (!url.equals(pendingUrl)) {
-                        //Log.i(LOGTAG, "Ignoring out of date request to update view for " + url);
-                        continue;
-                    }
-                    mPendingViews.remove(iv);
-                    if (result != null) {
-                        final Drawable newImage = result;
-                        final ImageView imageView = iv;
-                        imageView.setImageDrawable(newImage);
-                    }
-                }
-            }
-        };
-        downloader.execute();
     }
 
     private static Hashtable<ImageView, String> mPendingViews = new Hashtable<ImageView, String>();
