@@ -49,3 +49,8 @@ What if you only want to cache the images for a minute?
 UrlImageViewHelper.setUrlDrawable(imageView, "http://example.com/image.png", null, 60000);
 ```
 
+### FAQ
+
+**Does it work in list adapters when views are reused? (convertView)**
+
+Yes.
