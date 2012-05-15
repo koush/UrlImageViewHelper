@@ -15,11 +15,13 @@ import org.json.JSONObject;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.view.animation.AlphaAnimation;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,6 +29,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.koushikdutta.urlimageviewhelper.UrlImageViewCallback;
 import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
 
 public class UrlImageViewHelperSample extends Activity {
@@ -37,11 +40,9 @@ public class UrlImageViewHelperSample extends Activity {
         byte[] stuff = new byte[1024];
         ByteArrayOutputStream buff = new ByteArrayOutputStream();
         int read = 0;
-        int total = 0;
         while ((read = dis.read(stuff)) != -1)
         {
             buff.write(stuff, 0, read);
-            total += read;
         }
         
         return new String(buff.toByteArray());
@@ -65,7 +66,7 @@ public class UrlImageViewHelperSample extends Activity {
                 iv = (ImageView)convertView;
             
             // yep, that's it. it handles the downloading and showing an interstitial image automagically.
-            UrlImageViewHelper.setUrlDrawable(iv, getItem(position), R.drawable.loading);
+            UrlImageViewHelper.setUrlDrawable(iv, getItem(position), R.drawable.loading, null);
             
             return iv;
         }
