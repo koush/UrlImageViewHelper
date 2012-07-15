@@ -68,14 +68,15 @@ public final class UrlImageViewHelper {
         BitmapFactory.decodeStream(stream,null,o);
 
         //Find the correct scale value. It should be the power of 2.
-        int width_tmp=o.outWidth, height_tmp=o.outHeight;
-        int scale=1;
-        while(true){
-            if(width_tmp/2<maxSize || height_tmp/2<maxSize)
+        int tmpWidth = o.outWidth;
+        int tmpHeight = o.outHeight;
+        int scale = 1;
+        while (true) {
+            if (tmpWidth / 2 < maxSize || tmpHeight / 2 < maxSize)
                 break;
-            width_tmp/=2;
-            height_tmp/=2;
-            scale*=2;
+            tmpWidth /= 2;
+            tmpHeight /= 2;
+            scale *= 2;
         }
         stream.close();
 
@@ -91,7 +92,7 @@ public final class UrlImageViewHelper {
     }
 
     public static final int CACHE_DURATION_INFINITE = Integer.MAX_VALUE;
-    public static final int MAX_DISPLAY_SIZE = 100;
+    public static final int MAX_DISPLAY_SIZE = 480;
     public static final int CACHE_DURATION_ONE_DAY = 1000 * 60 * 60 * 24;
     public static final int CACHE_DURATION_TWO_DAYS = CACHE_DURATION_ONE_DAY * 2;
     public static final int CACHE_DURATION_THREE_DAYS = CACHE_DURATION_ONE_DAY * 3;
