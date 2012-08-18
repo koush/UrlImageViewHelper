@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -17,6 +18,7 @@ import org.apache.http.client.params.HttpClientParams;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetManager;
@@ -27,8 +29,10 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.http.AndroidHttpClient;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Environment;
+import android.os.Handler;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.widget.ImageView;
 
 public final class UrlImageViewHelper {
@@ -311,7 +315,15 @@ public final class UrlImageViewHelper {
                 }
             }
         };
-        downloader.execute();
+        if (Build.VERSION.SDK_INT < 11)
+            downloader.execute();
+        else
+            executeTaskHoneycomb(downloader);
+    }
+
+    @TargetApi(11)
+    private static void executeTaskHoneycomb(AsyncTask<Void, Void, BitmapDrawable> task) {
+        task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     private static Hashtable<ImageView, String> mPendingViews = new Hashtable<ImageView, String>();
