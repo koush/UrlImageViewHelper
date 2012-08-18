@@ -62,14 +62,41 @@ public final class UrlImageViewHelper {
         mResources = new Resources(mgr, mMetrics, context.getResources().getConfiguration());
     }
 
-    private static BitmapDrawable loadDrawableFromStream(Context context, InputStream stream) {
+    private static BitmapDrawable loadDrawableFromStream(Context context, String filename, int maxSize) throws IOException
+    {
+        FileInputStream  stream = context.openFileInput(filename);
         prepareResources(context);
-        final Bitmap bitmap = BitmapFactory.decodeStream(stream);
+
+        BitmapFactory.Options o = new BitmapFactory.Options();
+        o.inJustDecodeBounds = true;
+        BitmapFactory.decodeStream(stream,null,o);
+
+        //Find the correct scale value. It should be the power of 2.
+        int tmpWidth = o.outWidth;
+        int tmpHeight = o.outHeight;
+        int scale = 1;
+        while (true) {
+            if (tmpWidth / 2 < maxSize || tmpHeight / 2 < maxSize)
+                break;
+            tmpWidth /= 2;
+            tmpHeight /= 2;
+            scale *= 2;
+        }
+        stream.close();
+
+        //decode with inSampleSize
+        BitmapFactory.Options o2 = new BitmapFactory.Options();
+        o2.inSampleSize=scale;
+
+        stream = context.openFileInput(filename);
+        final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o2);
+        stream.close();
         //Log.i(LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
         return new BitmapDrawable(mResources, bitmap);
     }
 
     public static final int CACHE_DURATION_INFINITE = Integer.MAX_VALUE;
+    public static final int MAX_DISPLAY_SIZE = 480;
     public static final int CACHE_DURATION_ONE_DAY = 1000 * 60 * 60 * 24;
     public static final int CACHE_DURATION_TWO_DAYS = CACHE_DURATION_ONE_DAY * 2;
     public static final int CACHE_DURATION_THREE_DAYS = CACHE_DURATION_ONE_DAY * 3;
@@ -79,73 +106,77 @@ public final class UrlImageViewHelper {
     public static final int CACHE_DURATION_ONE_WEEK = CACHE_DURATION_ONE_DAY * 7;
 
     public static void setUrlDrawable(final ImageView imageView, final String url, int defaultResource) {
-        setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, CACHE_DURATION_THREE_DAYS);
+        setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, CACHE_DURATION_THREE_DAYS, MAX_DISPLAY_SIZE);
+    }
+
+    public static void setUrlDrawable(final ImageView imageView, final String url, int defaultResource, int maxSize) {
+        setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, CACHE_DURATION_THREE_DAYS, maxSize);
     }
 
     public static void setUrlDrawable(final ImageView imageView, final String url) {
-        setUrlDrawable(imageView.getContext(), imageView, url, null, CACHE_DURATION_THREE_DAYS, null);
+        setUrlDrawable(imageView.getContext(), imageView, url, null, CACHE_DURATION_THREE_DAYS, MAX_DISPLAY_SIZE, null);
     }
 
-    public static void loadUrlDrawable(final Context context, final String url) {
-        setUrlDrawable(context, null, url, null, CACHE_DURATION_THREE_DAYS, null);
+    public static void loadUrlDrawable(final Context context, final String url, int maxSize) {
+        setUrlDrawable(context, null, url, null, CACHE_DURATION_THREE_DAYS, maxSize, null);
     }
 
-    public static void setUrlDrawable(final ImageView imageView, final String url, Drawable defaultDrawable) {
-        setUrlDrawable(imageView.getContext(), imageView, url, defaultDrawable, CACHE_DURATION_THREE_DAYS, null);
+    public static void setUrlDrawable(final ImageView imageView, final String url, Drawable defaultDrawable, int maxSize) {
+        setUrlDrawable(imageView.getContext(), imageView, url, defaultDrawable, CACHE_DURATION_THREE_DAYS, maxSize, null);
     }
 
-    public static void setUrlDrawable(final ImageView imageView, final String url, int defaultResource, long cacheDurationMs) {
-        setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, cacheDurationMs);
+    public static void setUrlDrawable(final ImageView imageView, final String url, int defaultResource, long cacheDurationMs, int maxSize ) {
+        setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, cacheDurationMs, maxSize);
     }
 
-    public static void loadUrlDrawable(final Context context, final String url, long cacheDurationMs) {
-        setUrlDrawable(context, null, url, null, cacheDurationMs, null);
+    public static void loadUrlDrawable(final Context context, final String url, long cacheDurationMs, int maxSize) {
+        setUrlDrawable(context, null, url, null, cacheDurationMs, maxSize, null);
     }
 
-    public static void setUrlDrawable(final ImageView imageView, final String url, Drawable defaultDrawable, long cacheDurationMs) {
-        setUrlDrawable(imageView.getContext(), imageView, url, defaultDrawable, cacheDurationMs, null);
+    public static void setUrlDrawable(final ImageView imageView, final String url, Drawable defaultDrawable, long cacheDurationMs, int maxSize) {
+        setUrlDrawable(imageView.getContext(), imageView, url, defaultDrawable, cacheDurationMs, maxSize, null);
     }
 
-    private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, int defaultResource, long cacheDurationMs) {
+    private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, int defaultResource, long cacheDurationMs, int maxSize) {
         Drawable d = null;
         if (defaultResource != 0)
             d = imageView.getResources().getDrawable(defaultResource);
-        setUrlDrawable(context, imageView, url, d, cacheDurationMs, null);
+        setUrlDrawable(context, imageView, url, d, cacheDurationMs, maxSize, null);
     }
 
-    public static void setUrlDrawable(final ImageView imageView, final String url, int defaultResource, UrlImageViewCallback callback) {
-        setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, CACHE_DURATION_THREE_DAYS, callback);
+    public static void setUrlDrawable(final ImageView imageView, final String url, int defaultResource, int maxSize, UrlImageViewCallback callback) {
+        setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, CACHE_DURATION_THREE_DAYS, maxSize, callback);
     }
 
-    public static void setUrlDrawable(final ImageView imageView, final String url, UrlImageViewCallback callback) {
-        setUrlDrawable(imageView.getContext(), imageView, url, null, CACHE_DURATION_THREE_DAYS, callback);
+    public static void setUrlDrawable(final ImageView imageView, final String url, int maxSize, UrlImageViewCallback callback) {
+        setUrlDrawable(imageView.getContext(), imageView, url, null, CACHE_DURATION_THREE_DAYS, maxSize, callback);
     }
 
-    public static void loadUrlDrawable(final Context context, final String url, UrlImageViewCallback callback) {
-        setUrlDrawable(context, null, url, null, CACHE_DURATION_THREE_DAYS, callback);
+    public static void loadUrlDrawable(final Context context, final String url, int maxSize, UrlImageViewCallback callback) {
+        setUrlDrawable(context, null, url, null, CACHE_DURATION_THREE_DAYS, maxSize, callback);
     }
 
-    public static void setUrlDrawable(final ImageView imageView, final String url, Drawable defaultDrawable, UrlImageViewCallback callback) {
-        setUrlDrawable(imageView.getContext(), imageView, url, defaultDrawable, CACHE_DURATION_THREE_DAYS, callback);
+    public static void setUrlDrawable(final ImageView imageView, final String url, Drawable defaultDrawable, int maxSize, UrlImageViewCallback callback) {
+        setUrlDrawable(imageView.getContext(), imageView, url, defaultDrawable, CACHE_DURATION_THREE_DAYS, maxSize, callback);
     }
 
-    public static void setUrlDrawable(final ImageView imageView, final String url, int defaultResource, long cacheDurationMs, UrlImageViewCallback callback) {
-        setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, cacheDurationMs, callback);
+    public static void setUrlDrawable(final ImageView imageView, final String url, int defaultResource, long cacheDurationMs, int maxSize, UrlImageViewCallback callback) {
+        setUrlDrawable(imageView.getContext(), imageView, url, defaultResource, cacheDurationMs, maxSize, callback);
     }
 
-    public static void loadUrlDrawable(final Context context, final String url, long cacheDurationMs, UrlImageViewCallback callback) {
-        setUrlDrawable(context, null, url, null, cacheDurationMs, callback);
+    public static void loadUrlDrawable(final Context context, final String url, long cacheDurationMs, int maxSize, UrlImageViewCallback callback) {
+        setUrlDrawable(context, null, url, null, cacheDurationMs, maxSize, callback);
     }
 
-    public static void setUrlDrawable(final ImageView imageView, final String url, Drawable defaultDrawable, long cacheDurationMs, UrlImageViewCallback callback) {
-        setUrlDrawable(imageView.getContext(), imageView, url, defaultDrawable, cacheDurationMs, callback);
+    public static void setUrlDrawable(final ImageView imageView, final String url, Drawable defaultDrawable, long cacheDurationMs, int maxSize, UrlImageViewCallback callback) {
+        setUrlDrawable(imageView.getContext(), imageView, url, defaultDrawable, cacheDurationMs, maxSize, callback);
     }
 
-    private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, int defaultResource, long cacheDurationMs, UrlImageViewCallback callback) {
+    private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, int defaultResource, long cacheDurationMs, int maxSize, UrlImageViewCallback callback) {
         Drawable d = null;
         if (defaultResource != 0)
             d = imageView.getResources().getDrawable(defaultResource);
-        setUrlDrawable(context, imageView, url, d, cacheDurationMs, callback);
+        setUrlDrawable(context, imageView, url, d, cacheDurationMs, maxSize, callback);
     }
 
     private static boolean isNullOrEmpty(CharSequence s) {
@@ -181,7 +212,7 @@ public final class UrlImageViewHelper {
         }
     }
 
-    private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, long cacheDurationMs, final UrlImageViewCallback callback) {
+    private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, long cacheDurationMs, final int maxSize, final UrlImageViewCallback callback) {
         cleanup(context);
         // disassociate this ImageView from any pending downloads
         if (imageView != null)
@@ -211,9 +242,7 @@ public final class UrlImageViewHelper {
             try {
                 if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
                     //Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
-                    FileInputStream  fis = context.openFileInput(filename);
-                    drawable = loadDrawableFromStream(context, fis);
-                    fis.close();
+                    drawable = loadDrawableFromStream(context, filename, maxSize);
                     if (imageView != null)
                         imageView.setImageDrawable(drawable);
                     cache.put(url, drawable);
@@ -279,8 +308,7 @@ public final class UrlImageViewHelper {
                     copyStream(is, fos);
                     fos.close();
                     is.close();
-                    FileInputStream  fis = context.openFileInput(filename);
-                    return loadDrawableFromStream(context, fis);
+                    return loadDrawableFromStream(context, filename, maxSize);
                 }
                 catch (Exception ex) {
 //                    Log.e(LOGTAG, "Exception during Image download of " + url, ex);
@@ -306,9 +334,7 @@ public final class UrlImageViewHelper {
                     }
                     mPendingViews.remove(iv);
                     if (usableResult != null) {
-                        final Drawable newImage = usableResult;
-                        final ImageView imageView = iv;
-                        imageView.setImageDrawable(newImage);
+                        iv.setImageDrawable(usableResult);
                         if (callback != null)
                             callback.onLoaded(imageView, result, url, false);
                     }
