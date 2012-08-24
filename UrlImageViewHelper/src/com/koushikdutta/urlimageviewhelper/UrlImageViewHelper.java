@@ -11,6 +11,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Hashtable;
 
+import junit.framework.Assert;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -30,6 +32,7 @@ import android.graphics.drawable.Drawable;
 import android.net.http.AndroidHttpClient;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.widget.ImageView;
 
@@ -200,31 +203,11 @@ public final class UrlImageViewHelper {
                 callback.onLoaded(imageView, drawable, url, true);
             return;
         }
+        
+        // oh noes, at this point we definitely do not have the file available in memory
+        // let's prepare for an asynchronous load of the image.
 
-        final String filename = getFilenameForUrl(url);
-
-        File file = context.getFileStreamPath(filename);
-        if (file.exists()) {
-            try {
-                if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
-//                    Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
-                    FileInputStream  fis = context.openFileInput(filename);
-                    drawable = loadDrawableFromStream(context, fis);
-                    fis.close();
-                    if (imageView != null)
-                        imageView.setImageDrawable(drawable);
-                    cache.put(url, drawable);
-                    if (callback != null)
-                        callback.onLoaded(imageView, drawable, url, true);
-                    return;
-                }
-                else {
-                    //Log.i(LOGTAG, "File cache has expired. Refreshing.");
-                }
-            }
-            catch (Exception ex) {
-            }
-        }
+        final String filename = context.getFileStreamPath(getFilenameForUrl(url)).getAbsolutePath();
 
         // null it while it is downloading
         if (imageView != null)
@@ -258,7 +241,7 @@ public final class UrlImageViewHelper {
             @Override
             public void run() {
                 try {
-                    FileInputStream  fis = context.openFileInput(filename);
+                    FileInputStream  fis = new FileInputStream(filename);
                     result = loadDrawableFromStream(context, fis);
                 }
                 catch (Exception ex) {
@@ -269,6 +252,7 @@ public final class UrlImageViewHelper {
         final Runnable completion = new Runnable() {
             @Override
             public void run() {
+                Assert.assertEquals(Looper.myLooper(), Looper.getMainLooper());
                 Drawable usableResult = loader.result;
                 if (usableResult == null)
                     usableResult = defaultDrawable;
@@ -292,6 +276,33 @@ public final class UrlImageViewHelper {
                 }
             }
         };
+        
+
+        File file = new File(filename);
+        if (file.exists()) {
+            try {
+                if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
+//                    Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
+                    
+                    AsyncTask<Void, Void, Void> fileloader = new AsyncTask<Void, Void, Void>() {
+                        protected Void doInBackground(Void[] params) {
+                            loader.run();
+                            return null;
+                        };
+                        protected void onPostExecute(Void result) {
+                            completion.run();
+                        };
+                    };
+                    executeTask(fileloader);
+                    return;
+                }
+                else {
+                    //Log.i(LOGTAG, "File cache has expired. Refreshing.");
+                }
+            }
+            catch (Exception ex) {
+            }
+        }
 
         mDownloader.download(context, url, filename, loader, completion);
     }
@@ -340,7 +351,7 @@ public final class UrlImageViewHelper {
                                 client.close();
                             }
                         }
-                        FileOutputStream fos = context.openFileOutput(filename, Context.MODE_PRIVATE);
+                        FileOutputStream fos = new FileOutputStream(filename);
                         copyStream(is, fos);
                         fos.close();
                         is.close();
@@ -357,10 +368,7 @@ public final class UrlImageViewHelper {
                 }
             };
 
-            if (Build.VERSION.SDK_INT < 11)
-                downloader.execute();
-            else
-                executeTaskHoneycomb(downloader);
+            executeTask(downloader);
         }
     };
     
@@ -400,6 +408,13 @@ public final class UrlImageViewHelper {
     private static boolean mUseLegacyDownloader = false;
     private static UrlDownloader mDownloader = mDefaultDownloader;
 
+    private static void executeTask(AsyncTask<Void, Void, Void> task) {
+        if (Build.VERSION.SDK_INT < 11)
+            task.execute();
+        else
+            executeTaskHoneycomb(task);
+    }
+    
     @TargetApi(11)
     private static void executeTaskHoneycomb(AsyncTask<Void, Void, Void> task) {
         task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
