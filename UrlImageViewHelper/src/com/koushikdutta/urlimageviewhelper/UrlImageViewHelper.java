@@ -7,9 +7,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Hashtable;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -30,8 +30,6 @@ import android.graphics.drawable.Drawable;
 import android.net.http.AndroidHttpClient;
 import android.os.AsyncTask;
 import android.os.Build;
-import android.os.Environment;
-import android.os.Handler;
 import android.util.DisplayMetrics;
 import android.widget.ImageView;
 
@@ -193,10 +191,9 @@ public final class UrlImageViewHelper {
             return;
         }
 
-        final UrlImageCache cache = UrlImageCache.getInstance();
         Drawable drawable = cache.get(url);
         if (drawable != null) {
-            //Log.i(LOGTAG, "Cache hit on: " + url);
+//            Log.i(LOGTAG, "Cache hit on: " + url);
             if (imageView != null)
                 imageView.setImageDrawable(drawable);
             if (callback != null)
@@ -210,7 +207,7 @@ public final class UrlImageViewHelper {
         if (file.exists()) {
             try {
                 if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
-                    //Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
+//                    Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
                     FileInputStream  fis = context.openFileInput(filename);
                     drawable = loadDrawableFromStream(context, fis);
                     fis.close();
@@ -257,42 +254,22 @@ public final class UrlImageViewHelper {
             downloads.add(imageView);
         mPendingDownloads.put(url, downloads);
 
-        AsyncTask<Void, Void, BitmapDrawable> downloader = new AsyncTask<Void, Void, BitmapDrawable>() {
+        final Loader loader = new Loader() {
             @Override
-            protected BitmapDrawable doInBackground(Void... params) {
-                AndroidHttpClient client = AndroidHttpClient.newInstance(context.getPackageName());
+            public void run() {
                 try {
-                    HttpGet get = new HttpGet(url);
-                    final HttpParams httpParams = new BasicHttpParams();
-                    HttpClientParams.setRedirecting(httpParams, true);
-                    get.setParams(httpParams);
-                    HttpResponse resp = client.execute(get);
-                    int status = resp.getStatusLine().getStatusCode();
-                    if(status != HttpURLConnection.HTTP_OK){
-//                        Log.i(LOGTAG, "Couldn't download image from Server: " + url + " Reason: " + resp.getStatusLine().getReasonPhrase() + " / " + status);
-                        return null;
-                    }
-                    HttpEntity entity = resp.getEntity();
-//                    Log.i(LOGTAG, url + " Image Content Length: " + entity.getContentLength());
-                    InputStream is = entity.getContent();
-                    FileOutputStream fos = context.openFileOutput(filename, Context.MODE_PRIVATE);
-                    copyStream(is, fos);
-                    fos.close();
-                    is.close();
                     FileInputStream  fis = context.openFileInput(filename);
-                    return loadDrawableFromStream(context, fis);
+                    result = loadDrawableFromStream(context, fis);
                 }
                 catch (Exception ex) {
-//                    Log.e(LOGTAG, "Exception during Image download of " + url, ex);
-                    return null;
-                }
-                finally {
-                    client.close();
                 }
             }
+        };
 
-            protected void onPostExecute(BitmapDrawable result) {
-                Drawable usableResult = result;
+        final Runnable completion = new Runnable() {
+            @Override
+            public void run() {
+                Drawable usableResult = loader.result;
                 if (usableResult == null)
                     usableResult = defaultDrawable;
                 mPendingDownloads.remove(url);
@@ -310,19 +287,121 @@ public final class UrlImageViewHelper {
                         final ImageView imageView = iv;
                         imageView.setImageDrawable(newImage);
                         if (callback != null)
-                            callback.onLoaded(imageView, result, url, false);
+                            callback.onLoaded(imageView, loader.result, url, false);
                     }
                 }
             }
         };
-        if (Build.VERSION.SDK_INT < 11)
-            downloader.execute();
-        else
-            executeTaskHoneycomb(downloader);
+
+        mDownloader.download(context, url, filename, loader, completion);
     }
 
+    private static abstract class Loader implements Runnable {
+        public BitmapDrawable result;
+    }
+
+    public static interface UrlDownloader {
+        public void download(Context context, String url, String filename, Runnable loader, Runnable completion);
+    }
+
+    private static UrlDownloader mDefaultDownloader = new UrlDownloader() {
+        @Override
+        public void download(final Context context, final String url, final String filename, final Runnable loader, final Runnable completion) {
+            AsyncTask<Void, Void, Void> downloader = new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... params) {
+                    try {
+                        InputStream is;
+                        if (!mUseLegacyDownloader) {
+                            URL u = new URL(url);
+                            HttpURLConnection urlConnection = (HttpURLConnection)u.openConnection();
+                            if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
+                                return null;
+                            is = urlConnection.getInputStream();
+                        }
+                        else {
+                            AndroidHttpClient client = AndroidHttpClient.newInstance(context.getPackageName());
+                            try {
+                                HttpGet get = new HttpGet(url);
+                                final HttpParams httpParams = new BasicHttpParams();
+                                HttpClientParams.setRedirecting(httpParams, true);
+                                get.setParams(httpParams);
+                                HttpResponse resp = client.execute(get);
+                                int status = resp.getStatusLine().getStatusCode();
+                                if(status != HttpURLConnection.HTTP_OK){
+//                                    Log.i(LOGTAG, "Couldn't download image from Server: " + url + " Reason: " + resp.getStatusLine().getReasonPhrase() + " / " + status);
+                                    return null;
+                                }
+                                HttpEntity entity = resp.getEntity();
+//                                Log.i(LOGTAG, url + " Image Content Length: " + entity.getContentLength());
+                                is = entity.getContent();
+                            }
+                            finally {
+                                client.close();
+                            }
+                        }
+                        FileOutputStream fos = context.openFileOutput(filename, Context.MODE_PRIVATE);
+                        copyStream(is, fos);
+                        fos.close();
+                        is.close();
+                        loader.run();
+                        return null;
+                    }
+                    catch (Exception e) {
+                        return null;
+                    }
+                }
+
+                protected void onPostExecute(Void result) {
+                    completion.run();
+                }
+            };
+
+            if (Build.VERSION.SDK_INT < 11)
+                downloader.execute();
+            else
+                executeTaskHoneycomb(downloader);
+        }
+    };
+    
+    public static void useDownloader(UrlDownloader downloader) {
+        mDownloader = downloader;
+    }
+
+    public static void useDefaultDownloader() {
+        mDownloader = mDefaultDownloader;
+        mUseLegacyDownloader = false;
+    }
+
+    public static void useLegacyDownloader() {
+        mUseLegacyDownloader = true;
+    }
+    
+    private static UrlImageHashTable cache = UrlImageCache.getInstance();
+    public static void useDefaultCache(int maxSize) {
+        if (Build.VERSION.SDK_INT < 12)
+            useLegacyCache();
+        else
+            setupDefaultCache(maxSize);
+    }
+    
+    public static void useLegacyCache() {
+        cache = UrlImageCache.getInstance();
+    }
+    
+    private static void setupDefaultCache(int maxSize) {
+        cache = new UrlLruCache(maxSize);
+    }
+    
+    static {
+        useDefaultCache(10 * 1024 * 1024);
+    }
+
+    private static boolean mUseLegacyDownloader = false;
+    private static UrlDownloader mDownloader = mDefaultDownloader;
+
     @TargetApi(11)
-    private static void executeTaskHoneycomb(AsyncTask<Void, Void, BitmapDrawable> task) {
+    private static void executeTaskHoneycomb(AsyncTask<Void, Void, Void> task) {
         task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 

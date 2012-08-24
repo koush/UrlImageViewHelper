@@ -15,13 +15,11 @@ import org.json.JSONObject;
 
 import android.app.Activity;
 import android.content.Context;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
-import android.view.animation.AlphaAnimation;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -29,7 +27,6 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.koushikdutta.urlimageviewhelper.UrlImageViewCallback;
 import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
 
 public class UrlImageViewHelperSample extends Activity {
@@ -71,7 +68,7 @@ public class UrlImageViewHelperSample extends Activity {
             return iv;
         }
     }
-    
+
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -130,7 +127,6 @@ public class UrlImageViewHelperSample extends Activity {
                                 
                                 start += urls.size();
                             }
-
                         }
                         catch (final Exception ex) {
                             // explodey error, lets toast it
