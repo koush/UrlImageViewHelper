@@ -27,6 +27,7 @@ import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.BitmapFactory.Options;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.http.AndroidHttpClient;
@@ -34,6 +35,8 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Looper;
 import android.util.DisplayMetrics;
+import android.view.Display;
+import android.view.WindowManager;
 import android.widget.ImageView;
 
 public final class UrlImageViewHelper {
@@ -63,11 +66,32 @@ public final class UrlImageViewHelper {
         mResources = new Resources(mgr, mMetrics, context.getResources().getConfiguration());
     }
 
-    private static BitmapDrawable loadDrawableFromStream(Context context, InputStream stream) {
+    private static BitmapDrawable loadDrawableFromStream(Context context, String filename, int targetWidth, int targetHeight) {
         prepareResources(context);
-        final Bitmap bitmap = BitmapFactory.decodeStream(stream);
-        //Log.i(LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
-        return new BitmapDrawable(mResources, bitmap);
+        
+//        System.out.println(targetWidth);
+//        System.out.println(targetHeight);
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            FileInputStream stream = new FileInputStream(filename);
+            BitmapFactory.decodeStream(stream, null, o);
+            stream.close();
+            stream = new FileInputStream(filename);
+            int scale = 0;
+            while ((o.outWidth >> scale) > targetWidth || (o.outHeight >> scale) > targetHeight) {
+//                System.out.println("downsampling");
+                scale++;
+            }
+            o = new Options();
+            o.inSampleSize = 1 << scale;
+            final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
+            //Log.i(LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
+            return new BitmapDrawable(mResources, bitmap);
+        }
+        catch (IOException e) {
+            return null;
+        }
     }
 
     public static final int CACHE_DURATION_INFINITE = Integer.MAX_VALUE;
@@ -185,14 +209,16 @@ public final class UrlImageViewHelper {
     private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, long cacheDurationMs, final UrlImageViewCallback callback) {
         cleanup(context);
         // disassociate this ImageView from any pending downloads
-        if (imageView != null)
-            mPendingViews.remove(imageView);
-
         if (isNullOrEmpty(url)) {
             if (imageView != null)
                 imageView.setImageDrawable(defaultDrawable);
             return;
         }
+
+        WindowManager wm = (WindowManager)context.getSystemService(Context.WINDOW_SERVICE);
+        Display display = wm.getDefaultDisplay();
+        final int tw = display.getWidth();
+        final int th = display.getHeight();
 
         Drawable drawable = cache.get(url);
         if (drawable != null) {
@@ -237,12 +263,13 @@ public final class UrlImageViewHelper {
             downloads.add(imageView);
         mPendingDownloads.put(url, downloads);
 
+        final int targetWidth = tw <= 0 ? Integer.MAX_VALUE : tw;
+        final int targetHeight = th <= 0 ? Integer.MAX_VALUE : th;
         final Loader loader = new Loader() {
             @Override
             public void run() {
                 try {
-                    FileInputStream  fis = new FileInputStream(filename);
-                    result = loadDrawableFromStream(context, fis);
+                    result = loadDrawableFromStream(context, filename, targetWidth, targetHeight);
                 }
                 catch (Exception ex) {
                 }
@@ -269,7 +296,9 @@ public final class UrlImageViewHelper {
                     if (usableResult != null) {
                         final Drawable newImage = usableResult;
                         final ImageView imageView = iv;
+//                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
                         imageView.setImageDrawable(newImage);
+//                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
                         if (callback != null)
                             callback.onLoaded(imageView, loader.result, url, false);
                     }

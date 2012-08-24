@@ -73,6 +73,7 @@ public class UrlImageViewHelperSample extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
         setContentView(R.layout.main);
         
         final Button search = (Button)findViewById(R.id.search);
