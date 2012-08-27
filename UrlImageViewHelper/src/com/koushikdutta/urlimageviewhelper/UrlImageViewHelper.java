@@ -1,25 +1,5 @@
 package com.koushikdutta.urlimageviewhelper;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Hashtable;
-
-import junit.framework.Assert;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.params.HttpClientParams;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
-
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
@@ -38,6 +18,19 @@ import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import junit.framework.Assert;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.params.HttpClientParams;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpParams;
+
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Hashtable;
 
 public final class UrlImageViewHelper {
     private static final String LOGTAG = "UrlImageViewHelper";
@@ -294,13 +287,11 @@ public final class UrlImageViewHelper {
                     }
                     mPendingViews.remove(iv);
                     if (usableResult != null) {
-                        final Drawable newImage = usableResult;
-                        final ImageView imageView = iv;
-//                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
-                        imageView.setImageDrawable(newImage);
-//                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
+                        //                        System.out.println(String.format("imageView: %dx%d, %dx%d", iv.getMeasuredWidth(), iv.getMeasuredHeight(), iv.getWidth(), iv.getHeight()));
+                        iv.setImageDrawable(usableResult);
+//                        System.out.println(String.format("imageView: %dx%d, %dx%d", iv.getMeasuredWidth(), iv.getMeasuredHeight(), iv.getWidth(), iv.getHeight()));
                         if (callback != null)
-                            callback.onLoaded(imageView, loader.result, url, false);
+                            callback.onLoaded(iv, loader.result, url, false);
                     }
                 }
             }
@@ -317,10 +308,10 @@ public final class UrlImageViewHelper {
                         protected Void doInBackground(Void[] params) {
                             loader.run();
                             return null;
-                        };
+                        }
                         protected void onPostExecute(Void result) {
                             completion.run();
-                        };
+                        }
                     };
                     executeTask(fileloader);
                     return;
