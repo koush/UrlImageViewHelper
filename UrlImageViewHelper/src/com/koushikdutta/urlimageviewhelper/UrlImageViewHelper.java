@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Hashtable;
 
 import junit.framework.Assert;
@@ -22,6 +23,7 @@ import org.apache.http.params.HttpParams;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
@@ -35,6 +37,7 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Looper;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 import android.widget.ImageView;
@@ -66,7 +69,7 @@ public final class UrlImageViewHelper {
         mResources = new Resources(mgr, mMetrics, context.getResources().getConfiguration());
     }
 
-    private static BitmapDrawable loadDrawableFromStream(Context context, String filename, int targetWidth, int targetHeight) {
+    private static Drawable loadDrawableFromStream(Context context, String url, String filename, int targetWidth, int targetHeight) {
         prepareResources(context);
         
 //        System.out.println(targetWidth);
@@ -86,8 +89,10 @@ public final class UrlImageViewHelper {
             o = new Options();
             o.inSampleSize = 1 << scale;
             final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
-            //Log.i(LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
-            return new BitmapDrawable(mResources, bitmap);
+//            Log.i(LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
+            BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
+            ZombieDrawable zd = new ZombieDrawable(url, bd);
+            return zd;
         }
         catch (IOException e) {
             return null;
@@ -220,7 +225,20 @@ public final class UrlImageViewHelper {
         final int tw = display.getWidth();
         final int th = display.getHeight();
 
-        Drawable drawable = cache.get(url);
+        if (mDeadCache == null)
+            mDeadCache = new UrlLruCache(getHeapSize(context) / 8);
+        Drawable drawable;
+        BitmapDrawable zd = mDeadCache.remove(url);
+        if (zd != null) {
+            // this drawable was resurrected, it should not be in the live cache
+//            Log.i(LOGTAG, "zombie load");
+            Assert.assertTrue(!mAllCache.contains(zd));
+            drawable = new ZombieDrawable(url, zd);
+        }
+        else {
+            drawable = mLiveCache.get(url);
+        }
+
         if (drawable != null) {
 //            Log.i(LOGTAG, "Cache hit on: " + url);
             if (imageView != null)
@@ -269,7 +287,7 @@ public final class UrlImageViewHelper {
             @Override
             public void run() {
                 try {
-                    result = loadDrawableFromStream(context, filename, targetWidth, targetHeight);
+                    result = loadDrawableFromStream(context, url, filename, targetWidth, targetHeight);
                 }
                 catch (Exception ex) {
                 }
@@ -284,7 +302,7 @@ public final class UrlImageViewHelper {
                 if (usableResult == null)
                     usableResult = defaultDrawable;
                 mPendingDownloads.remove(url);
-                cache.put(url, usableResult);
+                mLiveCache.put(url, usableResult);
                 for (ImageView iv: downloads) {
                     // validate the url it is waiting for
                     String pendingUrl = mPendingViews.get(iv);
@@ -337,7 +355,7 @@ public final class UrlImageViewHelper {
     }
 
     private static abstract class Loader implements Runnable {
-        public BitmapDrawable result;
+        public Drawable result;
     }
 
     public static interface UrlDownloader {
@@ -352,7 +370,7 @@ public final class UrlImageViewHelper {
                 protected Void doInBackground(Void... params) {
                     try {
                         InputStream is;
-                        if (!mUseLegacyDownloader) {
+                        if (false && !mUseLegacyDownloader) {
                             URL u = new URL(url);
                             HttpURLConnection urlConnection = (HttpURLConnection)u.openConnection();
                             if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
@@ -387,7 +405,8 @@ public final class UrlImageViewHelper {
                         loader.run();
                         return null;
                     }
-                    catch (Exception e) {
+                    catch (Throwable e) {
+                        e.printStackTrace();
                         return null;
                     }
                 }
@@ -414,26 +433,39 @@ public final class UrlImageViewHelper {
         mUseLegacyDownloader = true;
     }
     
-    private static UrlImageHashTable cache = UrlImageCache.getInstance();
-    public static void useDefaultCache(int maxSize) {
-        if (Build.VERSION.SDK_INT < 12)
-            useLegacyCache();
-        else
-            setupDefaultCache(maxSize);
-    }
-    
-    public static void useLegacyCache() {
-        cache = UrlImageCache.getInstance();
-    }
-    
-    private static void setupDefaultCache(int maxSize) {
-        cache = new UrlLruCache(maxSize);
-    }
-    
-    static {
-        useDefaultCache(10 * 1024 * 1024);
-    }
+    private static UrlImageCache mLiveCache = UrlImageCache.getInstance();
 
+    private static UrlLruCache mDeadCache;
+    private static HashSet<BitmapDrawable> mAllCache = new HashSet<BitmapDrawable>();
+    private static int getHeapSize(Context context) {
+        return ((ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryClass() * 1024 * 1024;
+    }
+    
+    private static class ZombieDrawable extends WrapperDrawable {
+        public ZombieDrawable(String url, BitmapDrawable drawable) {
+            super(drawable);
+            mUrl = url;
+
+            mAllCache.add(drawable);
+            mDeadCache.remove(url);
+            mLiveCache.put(url, this);
+        }
+        
+        String mUrl;
+        
+        @Override
+        protected void finalize() throws Throwable {
+            super.finalize();
+
+            mDeadCache.put(mUrl, mDrawable);
+            mAllCache.remove(mDrawable);
+            mLiveCache.remove(mUrl);
+//            Log.i(LOGTAG, "Zombie GC event");
+            System.gc();
+        }
+    }
+    
+    
     private static boolean mUseLegacyDownloader = false;
     private static UrlDownloader mDownloader = mDefaultDownloader;
 

@@ -121,7 +121,7 @@ public class UrlImageViewHelperSample extends Activity {
                                     @Override
                                     public void run() {
                                         for (String url: urls) {
-                                            mAdapter.add(url);
+                                            mAdapter.add("http://www.exit.pt/webmm/exit/upload/88666 - Portugal Luso Grande Hotel do Luso (3) exterior.jpg");
                                         }
                                     }
                                 });
