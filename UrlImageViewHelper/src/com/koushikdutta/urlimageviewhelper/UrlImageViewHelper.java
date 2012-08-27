@@ -33,7 +33,9 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 
 public final class UrlImageViewHelper {
+
     private static final String LOGTAG = "UrlImageViewHelper";
+
     public static int copyStream(InputStream input, OutputStream output) throws IOException
     {
         byte[] stuff = new byte[1024];
@@ -199,8 +201,9 @@ public final class UrlImageViewHelper {
         }
     }
 
-    private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, long cacheDurationMs, final UrlImageViewCallback callback) {
+    private static void setUrlDrawable(final Context context, final ImageView imageView, String url, final Drawable defaultDrawable, long cacheDurationMs, final UrlImageViewCallback callback) {
         cleanup(context);
+
         // disassociate this ImageView from any pending downloads
         if (isNullOrEmpty(url)) {
             if (imageView != null)
@@ -208,25 +211,28 @@ public final class UrlImageViewHelper {
             return;
         }
 
+        //proper URL
+        final String parsedURL = url.replaceAll(" ","%20");
+
         WindowManager wm = (WindowManager)context.getSystemService(Context.WINDOW_SERVICE);
         Display display = wm.getDefaultDisplay();
         final int tw = display.getWidth();
         final int th = display.getHeight();
 
-        Drawable drawable = cache.get(url);
+        Drawable drawable = cache.get(parsedURL);
         if (drawable != null) {
-//            Log.i(LOGTAG, "Cache hit on: " + url);
+           //Log.i(LOGTAG, "Cache hit on: " + parsedURL);
             if (imageView != null)
                 imageView.setImageDrawable(drawable);
             if (callback != null)
-                callback.onLoaded(imageView, drawable, url, true);
+                callback.onLoaded(imageView, drawable, parsedURL, true);
             return;
         }
         
         // oh noes, at this point we definitely do not have the file available in memory
         // let's prepare for an asynchronous load of the image.
 
-        final String filename = context.getFileStreamPath(getFilenameForUrl(url)).getAbsolutePath();
+        final String filename = context.getFileStreamPath(getFilenameForUrl(parsedURL)).getAbsolutePath();
 
         // null it while it is downloading
         if (imageView != null)
@@ -235,11 +241,11 @@ public final class UrlImageViewHelper {
         // since listviews reuse their views, we need to 
         // take note of which url this view is waiting for.
         // This may change rapidly as the list scrolls or is filtered, etc.
-        //Log.i(LOGTAG, "Waiting for " + url);
+        //Log.i(LOGTAG, "Waiting for " + parsedURL);
         if (imageView != null)
-            mPendingViews.put(imageView, url);
+            mPendingViews.put(imageView, parsedURL);
 
-        ArrayList<ImageView> currentDownload = mPendingDownloads.get(url);
+        ArrayList<ImageView> currentDownload = mPendingDownloads.get(parsedURL);
         if (currentDownload != null) {
             // Also, multiple vies may be waiting for this url.
             // So, let's maintain a list of these views.
@@ -254,7 +260,7 @@ public final class UrlImageViewHelper {
         final ArrayList<ImageView> downloads = new ArrayList<ImageView>();
         if (imageView != null)
             downloads.add(imageView);
-        mPendingDownloads.put(url, downloads);
+        mPendingDownloads.put(parsedURL, downloads);
 
         final int targetWidth = tw <= 0 ? Integer.MAX_VALUE : tw;
         final int targetHeight = th <= 0 ? Integer.MAX_VALUE : th;
@@ -276,12 +282,12 @@ public final class UrlImageViewHelper {
                 Drawable usableResult = loader.result;
                 if (usableResult == null)
                     usableResult = defaultDrawable;
-                mPendingDownloads.remove(url);
-                cache.put(url, usableResult);
+                mPendingDownloads.remove(parsedURL);
+                cache.put(parsedURL, usableResult);
                 for (ImageView iv: downloads) {
                     // validate the url it is waiting for
                     String pendingUrl = mPendingViews.get(iv);
-                    if (!url.equals(pendingUrl)) {
+                    if (!parsedURL.equals(pendingUrl)) {
                         //Log.i(LOGTAG, "Ignoring out of date request to update view for " + url);
                         continue;
                     }
@@ -291,7 +297,7 @@ public final class UrlImageViewHelper {
                         iv.setImageDrawable(usableResult);
 //                        System.out.println(String.format("imageView: %dx%d, %dx%d", iv.getMeasuredWidth(), iv.getMeasuredHeight(), iv.getWidth(), iv.getHeight()));
                         if (callback != null)
-                            callback.onLoaded(iv, loader.result, url, false);
+                            callback.onLoaded(iv, loader.result, parsedURL, false);
                     }
                 }
             }
@@ -302,7 +308,7 @@ public final class UrlImageViewHelper {
         if (file.exists()) {
             try {
                 if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
-//                    Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
+//                    Log.i(LOGTAG, "File Cache hit on: " + parsedURL + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
                     
                     AsyncTask<Void, Void, Void> fileloader = new AsyncTask<Void, Void, Void>() {
                         protected Void doInBackground(Void[] params) {
@@ -324,7 +330,7 @@ public final class UrlImageViewHelper {
             }
         }
 
-        mDownloader.download(context, url, filename, loader, completion);
+        mDownloader.download(context, parsedURL, filename, loader, completion);
     }
 
     private static abstract class Loader implements Runnable {
