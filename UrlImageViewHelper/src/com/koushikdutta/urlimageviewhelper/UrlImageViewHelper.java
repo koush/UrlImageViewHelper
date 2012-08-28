@@ -88,7 +88,7 @@ public final class UrlImageViewHelper {
             }
             o = new Options();
             o.inSampleSize = 1 << scale;
-            final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
+            final Bitmap bitmap = BitmapFactory.decodeStream(stream);
 //            Log.i(LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
             BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
             ZombieDrawable zd = new ZombieDrawable(url, bd);
@@ -370,7 +370,7 @@ public final class UrlImageViewHelper {
                 protected Void doInBackground(Void... params) {
                     try {
                         InputStream is;
-                        if (false && !mUseLegacyDownloader) {
+                        if (!mUseLegacyDownloader) {
                             URL u = new URL(url);
                             HttpURLConnection urlConnection = (HttpURLConnection)u.openConnection();
                             if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
