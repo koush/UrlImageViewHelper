@@ -23,6 +23,7 @@ import android.widget.ImageView;
 import junit.framework.Assert;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.params.HttpClientParams;
 import org.apache.http.params.BasicHttpParams;
@@ -366,37 +367,21 @@ public final class UrlImageViewHelper {
                 @Override
                 protected Void doInBackground(Void... params) {
                     try {
-                        InputStream is;
-                        if (!mUseLegacyDownloader) {
-                            URL u = new URL(url);
-                            HttpURLConnection urlConnection = (HttpURLConnection)u.openConnection();
-                            if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
-                                return null;
-                            is = urlConnection.getInputStream();
-                        }
-                        else {
-                            AndroidHttpClient client = AndroidHttpClient.newInstance(context.getPackageName());
-                            try {
-                                HttpGet get = new HttpGet(url);
-                                final HttpParams httpParams = new BasicHttpParams();
-                                HttpClientParams.setRedirecting(httpParams, true);
-                                get.setParams(httpParams);
-                                HttpResponse resp = client.execute(get);
-                                int status = resp.getStatusLine().getStatusCode();
-                                if(status != HttpURLConnection.HTTP_OK){
-                                    if (Constants.LOG_ENABLED)
-                                        Log.i(Constants.LOGTAG, "Couldn't download image from Server: " + url + " Reason: " + resp.getStatusLine().getReasonPhrase() + " / " + status);
-                                    return null;
+                        URL u = new URL(url);
+                        HttpURLConnection urlConnection = (HttpURLConnection)u.openConnection();
+                        
+                        if (mRequestPropertiesCallback != null) {
+                            ArrayList<NameValuePair> props = mRequestPropertiesCallback.getHeadersForRequest(context, url);
+                            if (props != null) {
+                                for (NameValuePair pair: props) {
+                                    urlConnection.addRequestProperty(pair.getName(), pair.getValue());
                                 }
-                                HttpEntity entity = resp.getEntity();
-                                if (Constants.LOG_ENABLED)
-                                    Log.i(Constants.LOGTAG, url + " Image Content Length: " + entity.getContentLength());
-                                is = entity.getContent();
-                            }
-                            finally {
-                                client.close();
                             }
                         }
+
+                        if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
+                            return null;
+                        InputStream is = urlConnection.getInputStream();
                         FileOutputStream fos = new FileOutputStream(filename);
                         copyStream(is, fos);
                         fos.close();
@@ -419,23 +404,32 @@ public final class UrlImageViewHelper {
         }
     };
     
+    static public interface RequestPropertiesCallback {
+        public ArrayList<NameValuePair> getHeadersForRequest(Context context, String url);
+    }
+    
+    static private RequestPropertiesCallback mRequestPropertiesCallback;
+    static public RequestPropertiesCallback getRequestPropertiesCallback() {
+        return mRequestPropertiesCallback;
+    }
+    
+    static public void setRequestPropertiesCallback(RequestPropertiesCallback callback) {
+        mRequestPropertiesCallback = callback;
+    }
+    
+    
     public static void useDownloader(UrlDownloader downloader) {
         mDownloader = downloader;
     }
 
     public static void useDefaultDownloader() {
         mDownloader = mDefaultDownloader;
-        mUseLegacyDownloader = false;
     }
     
     public static UrlDownloader getDefaultDownloader() {
         return mDownloader;
     }
 
-    public static void useLegacyDownloader() {
-        mUseLegacyDownloader = true;
-    }
-    
     private static UrlImageCache mLiveCache = UrlImageCache.getInstance();
 
     private static UrlLruCache mDeadCache;
@@ -470,7 +464,6 @@ public final class UrlImageViewHelper {
     }
 
 
-    private static boolean mUseLegacyDownloader = false;
     private static UrlDownloader mDownloader = mDefaultDownloader;
 
     private static void executeTask(AsyncTask<Void, Void, Void> task) {
