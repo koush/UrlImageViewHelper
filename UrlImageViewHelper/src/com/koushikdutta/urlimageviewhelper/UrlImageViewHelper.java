@@ -1,26 +1,5 @@
 package com.koushikdutta.urlimageviewhelper;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Hashtable;
-
-import junit.framework.Assert;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.params.HttpClientParams;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
-
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -41,9 +20,23 @@ import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import junit.framework.Assert;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.params.HttpClientParams;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpParams;
+
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Hashtable;
 
 public final class UrlImageViewHelper {
-    private static final String LOGTAG = "UrlImageViewHelper";
+
     public static int copyStream(InputStream input, OutputStream output) throws IOException
     {
         byte[] stuff = new byte[1024];
@@ -72,8 +65,8 @@ public final class UrlImageViewHelper {
     private static Drawable loadDrawableFromStream(Context context, String url, String filename, int targetWidth, int targetHeight) {
         prepareResources(context);
         
-//        System.out.println(targetWidth);
-//        System.out.println(targetHeight);
+//        Log.v(Constants.LOGTAG,targetWidth);
+//        Log.v(Constants.LOGTAG,targetHeight);
         try {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
@@ -83,16 +76,16 @@ public final class UrlImageViewHelper {
             stream = new FileInputStream(filename);
             int scale = 0;
             while ((o.outWidth >> scale) > targetWidth || (o.outHeight >> scale) > targetHeight) {
-//                System.out.println("downsampling");
+                Log.v(Constants.LOGTAG,"downsampling");
                 scale++;
             }
             o = new Options();
             o.inSampleSize = 1 << scale;
             final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
-//            Log.i(LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
+            if (Constants.LOG_ENABLED)
+                Log.i(Constants.LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
             BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
-            ZombieDrawable zd = new ZombieDrawable(url, bd);
-            return zd;
+            return new ZombieDrawable(url, bd);
         }
         catch (IOException e) {
             return null;
@@ -231,7 +224,8 @@ public final class UrlImageViewHelper {
         BitmapDrawable zd = mDeadCache.remove(url);
         if (zd != null) {
             // this drawable was resurrected, it should not be in the live cache
-//            Log.i(LOGTAG, "zombie load");
+            if (Constants.LOG_ENABLED)
+                Log.i(Constants.LOGTAG, "zombie load");
             Assert.assertTrue(!mAllCache.contains(zd));
             drawable = new ZombieDrawable(url, zd);
         }
@@ -240,7 +234,8 @@ public final class UrlImageViewHelper {
         }
 
         if (drawable != null) {
-//            Log.i(LOGTAG, "Cache hit on: " + url);
+            if (Constants.LOG_ENABLED)
+                Log.i(Constants.LOGTAG, "Cache hit on: " + url);
             if (imageView != null)
                 imageView.setImageDrawable(drawable);
             if (callback != null)
@@ -260,7 +255,8 @@ public final class UrlImageViewHelper {
         // since listviews reuse their views, we need to 
         // take note of which url this view is waiting for.
         // This may change rapidly as the list scrolls or is filtered, etc.
-        //Log.i(LOGTAG, "Waiting for " + url);
+        if (Constants.LOG_ENABLED)
+            Log.i(Constants.LOGTAG, "Waiting for " + url);
         if (imageView != null)
             mPendingViews.put(imageView, url);
 
@@ -307,18 +303,17 @@ public final class UrlImageViewHelper {
                     // validate the url it is waiting for
                     String pendingUrl = mPendingViews.get(iv);
                     if (!url.equals(pendingUrl)) {
-                        //Log.i(LOGTAG, "Ignoring out of date request to update view for " + url);
+                        if (Constants.LOG_ENABLED)
+                            Log.i(Constants.LOGTAG, "Ignoring out of date request to update view for " + url);
                         continue;
                     }
                     mPendingViews.remove(iv);
                     if (usableResult != null) {
-                        final Drawable newImage = usableResult;
-                        final ImageView imageView = iv;
-//                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
-                        imageView.setImageDrawable(newImage);
+                        //                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
+                        iv.setImageDrawable(usableResult);
 //                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
                         if (callback != null)
-                            callback.onLoaded(imageView, loader.result, url, false);
+                            callback.onLoaded(iv, loader.result, url, false);
                     }
                 }
             }
@@ -329,22 +324,24 @@ public final class UrlImageViewHelper {
         if (file.exists()) {
             try {
                 if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
-//                    Log.i(LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
+                    if (Constants.LOG_ENABLED)
+                        Log.i(Constants.LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
                     
                     AsyncTask<Void, Void, Void> fileloader = new AsyncTask<Void, Void, Void>() {
                         protected Void doInBackground(Void[] params) {
                             loader.run();
                             return null;
-                        };
+                        }
                         protected void onPostExecute(Void result) {
                             completion.run();
-                        };
+                        }
                     };
                     executeTask(fileloader);
                     return;
                 }
                 else {
-                    //Log.i(LOGTAG, "File cache has expired. Refreshing.");
+                    if (Constants.LOG_ENABLED)
+                        Log.i(Constants.LOGTAG, "File cache has expired. Refreshing.");
                 }
             }
             catch (Exception ex) {
@@ -387,11 +384,13 @@ public final class UrlImageViewHelper {
                                 HttpResponse resp = client.execute(get);
                                 int status = resp.getStatusLine().getStatusCode();
                                 if(status != HttpURLConnection.HTTP_OK){
-//                                    Log.i(LOGTAG, "Couldn't download image from Server: " + url + " Reason: " + resp.getStatusLine().getReasonPhrase() + " / " + status);
+                                    if (Constants.LOG_ENABLED)
+                                        Log.i(Constants.LOGTAG, "Couldn't download image from Server: " + url + " Reason: " + resp.getStatusLine().getReasonPhrase() + " / " + status);
                                     return null;
                                 }
                                 HttpEntity entity = resp.getEntity();
-//                                Log.i(LOGTAG, url + " Image Content Length: " + entity.getContentLength());
+                                if (Constants.LOG_ENABLED)
+                                    Log.i(Constants.LOGTAG, url + " Image Content Length: " + entity.getContentLength());
                                 is = entity.getContent();
                             }
                             finally {
@@ -460,23 +459,24 @@ public final class UrlImageViewHelper {
             mDeadCache.put(mUrl, mDrawable);
             mAllCache.remove(mDrawable);
             mLiveCache.remove(mUrl);
-//            Log.i(LOGTAG, "Zombie GC event");
+            if (Constants.LOG_ENABLED)
+                Log.i(Constants.LOGTAG, "Zombie GC event");
             System.gc();
         }
     }
-    
-    
+
+
     private static boolean mUseLegacyDownloader = false;
     private static UrlDownloader mDownloader = mDefaultDownloader;
 
     private static void executeTask(AsyncTask<Void, Void, Void> task) {
-        if (Build.VERSION.SDK_INT < 11)
+        if (Build.VERSION.SDK_INT < Constants.HONEYCOMB)
             task.execute();
         else
             executeTaskHoneycomb(task);
     }
     
-    @TargetApi(11)
+    @TargetApi(Constants.HONEYCOMB)
     private static void executeTaskHoneycomb(AsyncTask<Void, Void, Void> task) {
         task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
