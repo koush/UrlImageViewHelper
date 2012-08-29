@@ -428,6 +428,10 @@ public final class UrlImageViewHelper {
         mDownloader = mDefaultDownloader;
         mUseLegacyDownloader = false;
     }
+    
+    public static UrlDownloader getDefaultDownloader() {
+        return mDownloader;
+    }
 
     public static void useLegacyDownloader() {
         mUseLegacyDownloader = true;
