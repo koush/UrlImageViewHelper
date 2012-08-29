@@ -1,11 +1,8 @@
 package com.koushikdutta.urlimageviewhelper;
 
-import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
-import android.util.LruCache;
 
-@SuppressLint("NewApi")
 public class UrlLruCache extends LruCache<String, BitmapDrawable> {
     public UrlLruCache(int maxSize) {
         super(maxSize);
@@ -16,7 +13,7 @@ public class UrlLruCache extends LruCache<String, BitmapDrawable> {
         if (value != null) {
             Bitmap b = value.getBitmap();
             if (b != null)
-                return b.getByteCount();
+                return b.getRowBytes() * b.getHeight();
         }
         return 0;
     }
