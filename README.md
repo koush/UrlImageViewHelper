@@ -53,7 +53,7 @@ UrlImageViewHelper is pretty smart. It can even load the photo for an Android co
 if given a Contact Content Provider URI.
 
 ```java
-UrlImageViewHelper.setUrlDrawable(imageView, "content://com.android.contacts/contacts/1115", R.drawable.dummy_contact_photo);
+UrlImageViewHelper.setUrlDrawable(imageView, "content://com.android.contacts/contacts/1115");
 ```
 
 ### FAQ
