@@ -49,6 +49,13 @@ What if you only want to cache the images for a minute?
 UrlImageViewHelper.setUrlDrawable(imageView, "http://example.com/image.png", null, 60000);
 ```
 
+UrlImageViewHelper is pretty smart. It can even load the photo for an Android contact
+if given a Contact Content Provider URI.
+
+```java
+UrlImageViewHelper.setUrlDrawable(imageView, "content://com.android.contacts/contacts/1115", R.drawable.dummy_contact_photo);
+```
+
 ### FAQ
 
 **Does it work in list adapters when views are reused? (convertView)**
