@@ -1,8 +1,25 @@
 package com.koushikdutta.urlimageviewhelper;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Hashtable;
+
+import junit.framework.Assert;
+
+import org.apache.http.NameValuePair;
+
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
@@ -11,30 +28,16 @@ import android.graphics.BitmapFactory;
 import android.graphics.BitmapFactory.Options;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.net.http.AndroidHttpClient;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Looper;
+import android.provider.ContactsContract;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.WindowManager;
 import android.widget.ImageView;
-import junit.framework.Assert;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.params.HttpClientParams;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
-
-import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Hashtable;
 
 public final class UrlImageViewHelper {
 
@@ -367,25 +370,35 @@ public final class UrlImageViewHelper {
                 @Override
                 protected Void doInBackground(Void... params) {
                     try {
-                        URL u = new URL(url);
-                        HttpURLConnection urlConnection = (HttpURLConnection)u.openConnection();
-                        
-                        if (mRequestPropertiesCallback != null) {
-                            ArrayList<NameValuePair> props = mRequestPropertiesCallback.getHeadersForRequest(context, url);
-                            if (props != null) {
-                                for (NameValuePair pair: props) {
-                                    urlConnection.addRequestProperty(pair.getName(), pair.getValue());
+                        InputStream is = null;
+                        if (url.startsWith(ContactsContract.Contacts.CONTENT_URI.toString())) {
+                            ContentResolver cr = context.getContentResolver();
+                            is = ContactsContract.Contacts.openContactPhotoInputStream(cr, Uri.parse(url));
+                        }
+                        else {
+                            URL u = new URL(url);
+                            HttpURLConnection urlConnection = (HttpURLConnection)u.openConnection();
+                            
+                            if (mRequestPropertiesCallback != null) {
+                                ArrayList<NameValuePair> props = mRequestPropertiesCallback.getHeadersForRequest(context, url);
+                                if (props != null) {
+                                    for (NameValuePair pair: props) {
+                                        urlConnection.addRequestProperty(pair.getName(), pair.getValue());
+                                    }
                                 }
                             }
-                        }
 
-                        if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
-                            return null;
-                        InputStream is = urlConnection.getInputStream();
-                        FileOutputStream fos = new FileOutputStream(filename);
-                        copyStream(is, fos);
-                        fos.close();
-                        is.close();
+                            if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK)
+                                return null;
+                            is = urlConnection.getInputStream();
+                        }
+                        
+                        if (is != null) {
+                            FileOutputStream fos = new FileOutputStream(filename);
+                            copyStream(is, fos);
+                            fos.close();
+                            is.close();
+                        }
                         loader.run();
                         return null;
                     }
