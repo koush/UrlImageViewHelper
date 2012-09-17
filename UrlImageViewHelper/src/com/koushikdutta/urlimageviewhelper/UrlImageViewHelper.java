@@ -35,11 +35,13 @@ import android.os.Looper;
 import android.provider.ContactsContract;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.Display;
-import android.view.WindowManager;
 import android.widget.ImageView;
 
 public final class UrlImageViewHelper {
+    private static void clog(String format, String message) {
+        if (Constants.LOG_ENABLED)
+            Log.i(Constants.LOGTAG, message);
+    }
 
     public static int copyStream(final InputStream input, final OutputStream output) throws IOException {
         final byte[] stuff = new byte[1024];
@@ -69,8 +71,8 @@ public final class UrlImageViewHelper {
     private static Drawable loadDrawableFromStream(final Context context, final String url, final String filename, final int targetWidth, final int targetHeight) {
         prepareResources(context);
 
-        //        Log.v(Constants.LOGTAG,targetWidth);
-        //        Log.v(Constants.LOGTAG,targetHeight);
+//        Log.v(Constants.LOGTAG,targetWidth);
+//        Log.v(Constants.LOGTAG,targetHeight);
         try {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
@@ -80,15 +82,12 @@ public final class UrlImageViewHelper {
             stream = new FileInputStream(filename);
             int scale = 0;
             while ((o.outWidth >> scale) > targetWidth || (o.outHeight >> scale) > targetHeight) {
-                Log.v(Constants.LOGTAG,"downsampling");
                 scale++;
             }
             o = new Options();
             o.inSampleSize = 1 << scale;
             final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
-            if (Constants.LOG_ENABLED) {
-                Log.i(Constants.LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
-            }
+            clog(Constants.LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
             final BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
             return new ZombieDrawable(url, bd);
         } catch (final IOException e) {
@@ -401,24 +400,12 @@ public final class UrlImageViewHelper {
             return;
         }
 
-        /*
-         * There are states wherein setUrlDrawable(...) can be called before
-         * mMetrics is initialized. In these cases, we'll need to use the
-         * deprecated Display.getWidth() and Display.getHeight(), because their
-         * alternative, Display.getSize(Point), only becomes available at API
-         * 13.
-         */
         final int tw;
         final int th;
-        if (mMetrics == null) {
-            final WindowManager wm = (WindowManager)context.getSystemService(Context.WINDOW_SERVICE);
-            final Display display = wm.getDefaultDisplay();
-            tw = display.getWidth();
-            th = display.getHeight();
-        } else {
-            tw = mMetrics.widthPixels;
-            th = mMetrics.heightPixels;
-        }
+        if (mMetrics == null)
+            prepareResources(context);
+        tw = mMetrics.widthPixels;
+        th = mMetrics.heightPixels;
 
         if (mDeadCache == null) {
             mDeadCache = new UrlLruCache(getHeapSize(context) / 8);
@@ -427,9 +414,7 @@ public final class UrlImageViewHelper {
         final BitmapDrawable zd = mDeadCache.remove(url);
         if (zd != null) {
             // this drawable was resurrected, it should not be in the live cache
-            if (Constants.LOG_ENABLED) {
-                Log.i(Constants.LOGTAG, "zombie load");
-            }
+            clog(Constants.LOGTAG, "zombie load");
             Assert.assertTrue(!mAllCache.contains(zd));
             drawable = new ZombieDrawable(url, zd);
         } else {
@@ -437,9 +422,7 @@ public final class UrlImageViewHelper {
         }
 
         if (drawable != null) {
-            if (Constants.LOG_ENABLED) {
-                Log.i(Constants.LOGTAG, "Cache hit on: " + url);
-            }
+            clog(Constants.LOGTAG, "Cache hit on: " + url);
             if (imageView != null) {
                 imageView.setImageDrawable(drawable);
             }
@@ -462,9 +445,7 @@ public final class UrlImageViewHelper {
         // since listviews reuse their views, we need to
         // take note of which url this view is waiting for.
         // This may change rapidly as the list scrolls or is filtered, etc.
-        if (Constants.LOG_ENABLED) {
-            Log.i(Constants.LOGTAG, "Waiting for " + url);
-        }
+        clog(Constants.LOGTAG, "Waiting for " + url);
         if (imageView != null) {
             mPendingViews.put(imageView, url);
         }
@@ -515,16 +496,14 @@ public final class UrlImageViewHelper {
                     // validate the url it is waiting for
                     final String pendingUrl = mPendingViews.get(iv);
                     if (!url.equals(pendingUrl)) {
-                        if (Constants.LOG_ENABLED) {
-                            Log.i(Constants.LOGTAG, "Ignoring out of date request to update view for " + url);
-                        }
+                        clog(Constants.LOGTAG, "Ignoring out of date request to update view for " + url);
                         continue;
                     }
                     mPendingViews.remove(iv);
                     if (usableResult != null) {
-                        //                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
+//                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
                         iv.setImageDrawable(usableResult);
-                        //                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
+//                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
                         if (callback != null) {
                             callback.onLoaded(iv, loader.result, url, false);
                         }
@@ -538,9 +517,7 @@ public final class UrlImageViewHelper {
         if (file.exists()) {
             try {
                 if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
-                    if (Constants.LOG_ENABLED) {
-                        Log.i(Constants.LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
-                    }
+                    clog(Constants.LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
 
                     final AsyncTask<Void, Void, Void> fileloader = new AsyncTask<Void, Void, Void>() {
                         @Override
@@ -557,9 +534,7 @@ public final class UrlImageViewHelper {
                     return;
                 }
                 else {
-                    if (Constants.LOG_ENABLED) {
-                        Log.i(Constants.LOGTAG, "File cache has expired. Refreshing.");
-                    }
+                    clog(Constants.LOGTAG, "File cache has expired. Refreshing.");
                 }
             }
             catch (final Exception ex) {
@@ -570,7 +545,7 @@ public final class UrlImageViewHelper {
     }
 
     private static abstract class Loader implements Runnable {
-        public Drawable result;
+        Drawable result;
     }
 
     public static interface UrlDownloader {
@@ -590,19 +565,32 @@ public final class UrlImageViewHelper {
                             is = ContactsContract.Contacts.openContactPhotoInputStream(cr, Uri.parse(url));
                         }
                         else {
-                            final URL u = new URL(url);
-                            final HttpURLConnection urlConnection = (HttpURLConnection)u.openConnection();
+                            String thisUrl = url;
+                            HttpURLConnection urlConnection;
+                            int redirectCount = 0;
+                            while (true) {
+                                final URL u = new URL(thisUrl);
+                                urlConnection = (HttpURLConnection)u.openConnection();
+                                urlConnection.setInstanceFollowRedirects(true);
 
-                            if (mRequestPropertiesCallback != null) {
-                                final ArrayList<NameValuePair> props = mRequestPropertiesCallback.getHeadersForRequest(context, url);
-                                if (props != null) {
-                                    for (final NameValuePair pair: props) {
-                                        urlConnection.addRequestProperty(pair.getName(), pair.getValue());
+                                if (mRequestPropertiesCallback != null) {
+                                    final ArrayList<NameValuePair> props = mRequestPropertiesCallback.getHeadersForRequest(context, url);
+                                    if (props != null) {
+                                        for (final NameValuePair pair: props) {
+                                            urlConnection.addRequestProperty(pair.getName(), pair.getValue());
+                                        }
                                     }
                                 }
+
+                                if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_TEMP && urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_PERM)
+                                    break;
+                                if (++redirectCount == 5)
+                                    break;
+                                thisUrl = urlConnection.getHeaderField("Location");
                             }
 
                             if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                                clog(Constants.LOGTAG, "Response Code: " + urlConnection.getResponseCode());
                                 return null;
                             }
                             is = urlConnection.getInputStream();
@@ -687,9 +675,7 @@ public final class UrlImageViewHelper {
             mDeadCache.put(mUrl, mDrawable);
             mAllCache.remove(mDrawable);
             mLiveCache.remove(mUrl);
-            if (Constants.LOG_ENABLED) {
-                Log.i(Constants.LOGTAG, "Zombie GC event");
-            }
+            clog(Constants.LOGTAG, "Zombie GC event");
             System.gc();
         }
     }
