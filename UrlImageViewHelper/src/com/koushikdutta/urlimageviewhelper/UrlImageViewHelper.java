@@ -344,7 +344,13 @@ public final class UrlImageViewHelper {
         return url.hashCode() + ".urlimage";
     }
 
-    private static void cleanup(final Context context) {
+    /**
+     * Clear out cached images.
+     * @param context
+     * @param age The max age of a file. Files older than this age
+     *              will be removed.
+     */
+    public static void cleanup(final Context context, long age) {
         if (mHasCleaned) {
             return;
         }
@@ -368,6 +374,15 @@ public final class UrlImageViewHelper {
         } catch (final Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Clear out all cached images older than a week.
+     * The same as calling cleanup(context, CACHE_DURATION_ONE_WEEK);
+     * @param context
+     */
+    public static void cleanup(final Context context) {
+        cleanup(context, CACHE_DURATION_ONE_WEEK);
     }
 
     /**
