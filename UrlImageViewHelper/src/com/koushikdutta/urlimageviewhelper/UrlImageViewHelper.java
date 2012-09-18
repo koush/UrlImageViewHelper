@@ -567,7 +567,6 @@ public final class UrlImageViewHelper {
                         else {
                             String thisUrl = url;
                             HttpURLConnection urlConnection;
-                            int redirectCount = 0;
                             while (true) {
                                 final URL u = new URL(thisUrl);
                                 urlConnection = (HttpURLConnection)u.openConnection();
@@ -583,8 +582,6 @@ public final class UrlImageViewHelper {
                                 }
 
                                 if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_TEMP && urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_PERM)
-                                    break;
-                                if (++redirectCount == 5)
                                     break;
                                 thisUrl = urlConnection.getHeaderField("Location");
                             }
