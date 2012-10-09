@@ -48,7 +48,14 @@ class WrapperDrawable extends Drawable {
     
     @Override
     public int getIntrinsicWidth() {
-        // TODO Auto-generated method stub
         return mDrawable.getIntrinsicWidth();
+    }
+    
+    /**
+     * Returns the underlying {@link BitmapDrawable}.
+     * @return An instance of {@link BitmapDrawable}
+     */
+    public BitmapDrawable toBitmapDrawable() {
+    	return mDrawable;
     }
 }
