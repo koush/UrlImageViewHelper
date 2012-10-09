@@ -404,7 +404,6 @@ public final class UrlImageViewHelper {
      *            called when the image successfully finishes loading. This
      *            value can be null.
      */
-    @SuppressWarnings("deprecation")
     private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, final long cacheDurationMs, final UrlImageViewCallback callback) {
         cleanup(context);
         // disassociate this ImageView from any pending downloads

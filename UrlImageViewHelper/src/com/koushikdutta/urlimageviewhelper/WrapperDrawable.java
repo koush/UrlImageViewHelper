@@ -48,7 +48,6 @@ class WrapperDrawable extends Drawable {
     
     @Override
     public int getIntrinsicWidth() {
-        // TODO Auto-generated method stub
         return mDrawable.getIntrinsicWidth();
     }
 }
