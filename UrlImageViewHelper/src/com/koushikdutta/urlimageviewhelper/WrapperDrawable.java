@@ -50,4 +50,12 @@ class WrapperDrawable extends Drawable {
     public int getIntrinsicWidth() {
         return mDrawable.getIntrinsicWidth();
     }
+    
+    /**
+     * Returns the underlying {@link BitmapDrawable}.
+     * @return An instance of {@link BitmapDrawable}
+     */
+    public BitmapDrawable toBitmapDrawable() {
+    	return mDrawable;
+    }
 }
