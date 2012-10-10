@@ -5,7 +5,7 @@ import android.graphics.ColorFilter;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 
-class WrapperDrawable extends Drawable {
+public class WrapperDrawable extends Drawable {
     public WrapperDrawable(BitmapDrawable drawable) {
         mDrawable = drawable;
     }
