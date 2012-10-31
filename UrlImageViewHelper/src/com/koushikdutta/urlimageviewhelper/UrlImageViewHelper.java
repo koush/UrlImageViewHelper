@@ -506,6 +506,8 @@ public final class UrlImageViewHelper {
                 }
                 mPendingDownloads.remove(url);
                 mLiveCache.put(url, usableResult);
+                if (callback != null && imageView == null)
+                    callback.onLoaded(null, loader.result, url, false);
                 for (final ImageView iv: downloads) {
                     // validate the url it is waiting for
                     final String pendingUrl = mPendingViews.get(iv);
@@ -518,9 +520,8 @@ public final class UrlImageViewHelper {
 //                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
                         iv.setImageDrawable(usableResult);
 //                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
-                        if (callback != null) {
+                        if (callback != null && iv == imageView)
                             callback.onLoaded(iv, loader.result, url, false);
-                        }
                     }
                 }
             }
