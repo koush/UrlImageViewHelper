@@ -8,10 +8,10 @@ The sample will do a Google Image Search and load/show the results asynchronousl
 
 ### Usage
 
-UrlImageViewHelper will automatically download, save, and cache all the image urls
-the BitmapDrawables. Duplicate urls will not be loaded into memory twice.
-Bitmap memory is managed by using a weak reference hash table, so as soon as the
-image is no longer used by you, it will be garbage collected automatically.
+UrlImageViewHelper will automatically download and manage all the web images and ImageViews.
+Duplicate urls will not be loaded into memory twice. Bitmap memory is managed by using
+a weak reference hash table, so as soon as the image is no longer used by you,
+it will be garbage collected automatically.
 
 Usage is simple:
 
