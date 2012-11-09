@@ -38,9 +38,9 @@ import android.util.Log;
 import android.widget.ImageView;
 
 public final class UrlImageViewHelper {
-    private static void clog(String format, String message) {
+    private static void clog(String format, Object... args) {
         if (Constants.LOG_ENABLED)
-            Log.i(Constants.LOGTAG, message);
+            Log.i(Constants.LOGTAG, String.format(format, args));
     }
 
     public static int copyStream(final InputStream input, final OutputStream output) throws IOException {
@@ -88,7 +88,7 @@ public final class UrlImageViewHelper {
             o = new Options();
             o.inSampleSize = 1 << scale;
             final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
-            clog(Constants.LOGTAG, String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
+            clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
             final BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
             return new ZombieDrawable(url, bd);
         } catch (final IOException e) {
@@ -437,7 +437,7 @@ public final class UrlImageViewHelper {
         final BitmapDrawable zd = mDeadCache.remove(url);
         if (zd != null) {
             // this drawable was resurrected, it should not be in the live cache
-            clog(Constants.LOGTAG, "zombie load");
+            clog("zombie load");
             Assert.assertTrue(!mAllCache.contains(zd));
             drawable = new ZombieDrawable(url, zd);
         } else {
@@ -445,7 +445,7 @@ public final class UrlImageViewHelper {
         }
 
         if (drawable != null) {
-            clog(Constants.LOGTAG, "Cache hit on: " + url);
+            clog("Cache hit on: " + url);
             if (imageView != null) {
                 imageView.setImageDrawable(drawable);
             }
@@ -468,7 +468,7 @@ public final class UrlImageViewHelper {
         // since listviews reuse their views, we need to
         // take note of which url this view is waiting for.
         // This may change rapidly as the list scrolls or is filtered, etc.
-        clog(Constants.LOGTAG, "Waiting for " + url);
+        clog("Waiting for " + url);
         if (imageView != null) {
             mPendingViews.put(imageView, url);
         }
@@ -517,13 +517,15 @@ public final class UrlImageViewHelper {
                 mLiveCache.put(url, usableResult);
                 if (callback != null && imageView == null)
                     callback.onLoaded(null, loader.result, url, false);
+                int waitingCount = 0;
                 for (final ImageView iv: downloads) {
                     // validate the url it is waiting for
                     final String pendingUrl = mPendingViews.get(iv);
                     if (!url.equals(pendingUrl)) {
-                        clog(Constants.LOGTAG, "Ignoring out of date request to update view for " + url);
+                        clog("Ignoring out of date request to update view for " + url);
                         continue;
                     }
+                    waitingCount++;
                     mPendingViews.remove(iv);
                     if (usableResult != null) {
 //                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
@@ -533,6 +535,7 @@ public final class UrlImageViewHelper {
                             callback.onLoaded(iv, loader.result, url, false);
                     }
                 }
+                clog("Populated: " + waitingCount);
             }
         };
 
@@ -541,7 +544,7 @@ public final class UrlImageViewHelper {
         if (file.exists()) {
             try {
                 if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
-                    clog(Constants.LOGTAG, "File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
+                    clog("File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
 
                     final AsyncTask<Void, Void, Void> fileloader = new AsyncTask<Void, Void, Void>() {
                         @Override
@@ -558,7 +561,7 @@ public final class UrlImageViewHelper {
                     return;
                 }
                 else {
-                    clog(Constants.LOGTAG, "File cache has expired. Refreshing.");
+                    clog("File cache has expired. Refreshing.");
                 }
             }
             catch (final Exception ex) {
@@ -611,7 +614,7 @@ public final class UrlImageViewHelper {
                             }
 
                             if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                                clog(Constants.LOGTAG, "Response Code: " + urlConnection.getResponseCode());
+                                clog("Response Code: " + urlConnection.getResponseCode());
                                 return null;
                             }
                             is = urlConnection.getInputStream();
@@ -696,7 +699,7 @@ public final class UrlImageViewHelper {
             mDeadCache.put(mUrl, mDrawable);
             mAllCache.remove(mDrawable);
             mLiveCache.remove(mUrl);
-            clog(Constants.LOGTAG, "Zombie GC event");
+            clog("Zombie GC event");
             System.gc();
         }
     }
