@@ -73,10 +73,11 @@ public final class UrlImageViewHelper {
 
 //        Log.v(Constants.LOGTAG,targetWidth);
 //        Log.v(Constants.LOGTAG,targetHeight);
+        FileInputStream stream = null;
         try {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
-            FileInputStream stream = new FileInputStream(filename);
+            stream = new FileInputStream(filename);
             BitmapFactory.decodeStream(stream, null, o);
             stream.close();
             stream = new FileInputStream(filename);
@@ -92,6 +93,14 @@ public final class UrlImageViewHelper {
             return new ZombieDrawable(url, bd);
         } catch (final IOException e) {
             return null;
+        } finally {
+            if (stream != null) {
+                try {
+                    stream.close();
+                } catch (IOException e) {
+                    Log.w(Constants.LOGTAG, "Failed to close FileInputStream", e);
+                }
+            }
         }
     }
 
