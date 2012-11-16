@@ -393,6 +393,10 @@ public final class UrlImageViewHelper {
     public static void cleanup(final Context context) {
         cleanup(context, CACHE_DURATION_ONE_WEEK);
     }
+    
+    private static boolean checkCacheDuration(File file, long cacheDurationMs) {
+        return cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs;
+    }
 
     /**
      * Download and shrink an Image located at a specified URL, and display it
@@ -430,6 +434,9 @@ public final class UrlImageViewHelper {
         tw = mMetrics.widthPixels;
         th = mMetrics.heightPixels;
 
+        final String filename = context.getFileStreamPath(getFilenameForUrl(url)).getAbsolutePath();
+        final File file = new File(filename);
+
         if (mDeadCache == null) {
             mDeadCache = new UrlLruCache(getHeapSize(context) / 8);
         }
@@ -457,8 +464,6 @@ public final class UrlImageViewHelper {
 
         // oh noes, at this point we definitely do not have the file available in memory
         // let's prepare for an asynchronous load of the image.
-
-        final String filename = context.getFileStreamPath(getFilenameForUrl(url)).getAbsolutePath();
 
         // null it while it is downloading
         if (imageView != null) {
@@ -540,10 +545,9 @@ public final class UrlImageViewHelper {
         };
 
 
-        final File file = new File(filename);
         if (file.exists()) {
             try {
-                if (cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs) {
+                if (checkCacheDuration(file, cacheDurationMs)) {
                     clog("File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
 
                     final AsyncTask<Void, Void, Void> fileloader = new AsyncTask<Void, Void, Void>() {
@@ -696,11 +700,18 @@ public final class UrlImageViewHelper {
         protected void finalize() throws Throwable {
             super.finalize();
 
-            mDeadCache.put(mUrl, mDrawable);
+            if (!mHeadshot)
+                mDeadCache.put(mUrl, mDrawable);
             mAllCache.remove(mDrawable);
             mLiveCache.remove(mUrl);
             clog("Zombie GC event");
             System.gc();
+        }
+        
+        // kill this zombie, forever.
+        private boolean mHeadshot = false;
+        public void headshot() {
+            mHeadshot = true;
         }
     }
 
