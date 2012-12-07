@@ -591,9 +591,13 @@ public final class UrlImageViewHelper {
                 protected Void doInBackground(final Void... params) {
                     try {
                         InputStream is = null;
-                        if (url.startsWith(ContactsContract.Contacts.CONTENT_URI.toString())) {
+                        if (url.startsWith(ContentResolver.SCHEME_CONTENT)) {
                             final ContentResolver cr = context.getContentResolver();
-                            is = ContactsContract.Contacts.openContactPhotoInputStream(cr, Uri.parse(url));
+                            if (url.startsWith(ContactsContract.Contacts.CONTENT_URI.toString())) {
+                                is = ContactsContract.Contacts.openContactPhotoInputStream(cr, Uri.parse(url));
+                            } else {
+                                is = cr.openInputStream(Uri.parse(url));
+                            }
                         }
                         else {
                             String thisUrl = url;
