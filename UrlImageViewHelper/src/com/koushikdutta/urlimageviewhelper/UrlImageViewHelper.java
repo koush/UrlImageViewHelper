@@ -68,6 +68,27 @@ public final class UrlImageViewHelper {
         mResources = new Resources(mgr, mMetrics, context.getResources().getConfiguration());
     }
 
+    private static boolean mUseBitmapScaling = true;
+    /**
+     * Bitmap scaling will use smart/sane values to limit the maximum
+     * dimension of the bitmap during decode. This will prevent any dimension of the
+     * bitmap from being larger than the dimensions of the device itself.
+     * Doing this will conserve memory.
+     * @param useBitmapScaling Toggle for smart resizing.
+     */
+    public static void setUseBitmapScaling(boolean useBitmapScaling) {
+        mUseBitmapScaling = useBitmapScaling;
+    }
+    /**
+     * Bitmap scaling will use smart/sane values to limit the maximum
+     * dimension of the bitmap during decode. This will prevent any dimension of the
+     * bitmap from being larger than the dimensions of the device itself.
+     * Doing this will conserve memory.
+     */
+    public static boolean getUseBitmapScaling() {
+        return mUseBitmapScaling;
+    }
+
     private static Drawable loadDrawableFromStream(final Context context, final String url, final String filename, final int targetWidth, final int targetHeight) {
         prepareResources(context);
 
@@ -75,18 +96,21 @@ public final class UrlImageViewHelper {
 //        Log.v(Constants.LOGTAG,targetHeight);
         FileInputStream stream = null;
         try {
-            BitmapFactory.Options o = new BitmapFactory.Options();
-            o.inJustDecodeBounds = true;
-            stream = new FileInputStream(filename);
-            BitmapFactory.decodeStream(stream, null, o);
-            stream.close();
-            stream = new FileInputStream(filename);
-            int scale = 0;
-            while ((o.outWidth >> scale) > targetWidth || (o.outHeight >> scale) > targetHeight) {
-                scale++;
+            BitmapFactory.Options o = null;
+            if (mUseBitmapScaling) {
+                o = new BitmapFactory.Options();
+                o.inJustDecodeBounds = true;
+                stream = new FileInputStream(filename);
+                BitmapFactory.decodeStream(stream, null, o);
+                stream.close();
+                int scale = 0;
+                while ((o.outWidth >> scale) > targetWidth || (o.outHeight >> scale) > targetHeight) {
+                    scale++;
+                }
+                o = new Options();
+                o.inSampleSize = 1 << scale;
             }
-            o = new Options();
-            o.inSampleSize = 1 << scale;
+            stream = new FileInputStream(filename);
             final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
             clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
             final BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
