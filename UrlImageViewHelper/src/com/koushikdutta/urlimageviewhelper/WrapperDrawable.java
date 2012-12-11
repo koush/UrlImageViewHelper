@@ -2,6 +2,7 @@ package com.koushikdutta.urlimageviewhelper;
 
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
+import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 
@@ -39,6 +40,13 @@ public class WrapperDrawable extends Drawable {
     @Override
     public void setBounds(int left, int top, int right, int bottom) {
         mDrawable.setBounds(left, top, right, bottom);
+        super.setBounds(left, top, right, bottom);
+    }
+    
+    @Override
+    public void setBounds(Rect r) {
+        mDrawable.setBounds(r);
+        super.setBounds(r);
     }
     
     @Override
