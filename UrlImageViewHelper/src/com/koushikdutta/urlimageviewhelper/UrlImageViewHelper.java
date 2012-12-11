@@ -39,8 +39,13 @@ import android.widget.ImageView;
 
 public final class UrlImageViewHelper {
     private static void clog(String format, Object... args) {
+        String log;
+        if (args.length == 0)
+            log = format;
+        else
+            log = String.format(format, args);
         if (Constants.LOG_ENABLED)
-            Log.i(Constants.LOGTAG, String.format(format, args));
+            Log.i(Constants.LOGTAG, log);
     }
 
     public static int copyStream(final InputStream input, final OutputStream output) throws IOException {
@@ -465,18 +470,34 @@ public final class UrlImageViewHelper {
             mDeadCache = new UrlLruCache(getHeapSize(context) / 8);
         }
         Drawable drawable;
-        final BitmapDrawable zd = mDeadCache.remove(url);
-        if (zd != null) {
+        final BitmapDrawable bd = mDeadCache.remove(url);
+        if (bd != null) {
             // this drawable was resurrected, it should not be in the live cache
-            clog("zombie load");
-            Assert.assertTrue(!mAllCache.contains(zd));
-            drawable = new ZombieDrawable(url, zd);
+            clog("zombie load: " + url);
+            Assert.assertTrue(url, !mAllCache.contains(bd));
+            drawable = new ZombieDrawable(url, bd);
         } else {
             drawable = mLiveCache.get(url);
         }
 
         if (drawable != null) {
             clog("Cache hit on: " + url);
+            // if the file age is older than the cache duration, force a refresh.
+            // note that the file must exist, otherwise it is using a default.
+            // not checking for file existence would do a network call on every
+            // 404 or failed load.
+            if (file.exists() && !checkCacheDuration(file, cacheDurationMs)) {
+                clog("Cache hit, but file is stale. Forcing reload: " + url);
+                if (drawable instanceof ZombieDrawable)
+                    ((ZombieDrawable)drawable).headshot();
+                drawable = null;
+            }
+            else {
+                clog("Using cached: " + url);
+            }
+        }
+
+        if (drawable != null) {
             if (imageView != null) {
                 imageView.setImageDrawable(drawable);
             }
@@ -732,14 +753,16 @@ public final class UrlImageViewHelper {
                 mDeadCache.put(mUrl, mDrawable);
             mAllCache.remove(mDrawable);
             mLiveCache.remove(mUrl);
-            clog("Zombie GC event");
-            System.gc();
+            clog("Zombie GC event " + mUrl);
         }
         
         // kill this zombie, forever.
         private boolean mHeadshot = false;
         public void headshot() {
+            clog("BOOM! Headshot: " + mUrl);
             mHeadshot = true;
+            mLiveCache.remove(mUrl);
+            mAllCache.remove(mDrawable);
         }
     }
 

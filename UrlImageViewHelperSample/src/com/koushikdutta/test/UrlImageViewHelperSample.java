@@ -63,7 +63,7 @@ public class UrlImageViewHelperSample extends Activity {
                 iv = (ImageView)convertView;
             
             // yep, that's it. it handles the downloading and showing an interstitial image automagically.
-            UrlImageViewHelper.setUrlDrawable(iv, getItem(position), R.drawable.loading, null);
+            UrlImageViewHelper.setUrlDrawable(iv, getItem(position), R.drawable.loading);
             
             return iv;
         }
