@@ -429,10 +429,13 @@ public final class UrlImageViewHelper {
     }
     
     public static Drawable getImmediateMutableDrawable(String url) {
-        Drawable ret = mDeadCache.get(url);
+        Drawable ret = null;
+        if (mDeadCache != null)
+            ret = mDeadCache.get(url);
         if (ret != null)
             return ret;
-        ret = mLiveCache.get(url);
+        if (mLiveCache != null)
+            ret = mLiveCache.get(url);
         if (ret != null && ret instanceof ZombieDrawable) {
             ZombieDrawable zd = (ZombieDrawable)ret;
             return zd.getBitmapDrawable().mutate();
