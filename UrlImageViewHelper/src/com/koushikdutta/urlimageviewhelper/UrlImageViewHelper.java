@@ -100,6 +100,7 @@ public final class UrlImageViewHelper {
 //        Log.v(Constants.LOGTAG,targetWidth);
 //        Log.v(Constants.LOGTAG,targetHeight);
         FileInputStream stream = null;
+        clog("Decoding: " + url + " " + filename);
         try {
             BitmapFactory.Options o = null;
             if (mUseBitmapScaling) {
@@ -528,7 +529,7 @@ public final class UrlImageViewHelper {
         // since listviews reuse their views, we need to
         // take note of which url this view is waiting for.
         // This may change rapidly as the list scrolls or is filtered, etc.
-        clog("Waiting for " + url);
+        clog("Waiting for " + url + " " + imageView);
         if (imageView != null) {
             imageView.setImageDrawable(defaultDrawable);
             mPendingViews.put(imageView, url);
@@ -562,6 +563,8 @@ public final class UrlImageViewHelper {
                     result = loadDrawableFromStream(context, url, filename, targetWidth, targetHeight);
                 }
                 catch (final Exception ex) {
+                    if (Constants.LOG_ENABLED)
+                        Log.e(Constants.LOGTAG, "Error loading " + url, ex);
                 }
             }
         };
@@ -572,6 +575,7 @@ public final class UrlImageViewHelper {
                 Assert.assertEquals(Looper.myLooper(), Looper.getMainLooper());
                 Drawable usableResult = loader.result;
                 if (usableResult == null) {
+                    clog("No usable result, defaulting " + url);
                     usableResult = defaultDrawable;
                 }
                 mPendingDownloads.remove(url);
@@ -583,7 +587,7 @@ public final class UrlImageViewHelper {
                     // validate the url it is waiting for
                     final String pendingUrl = mPendingViews.get(iv);
                     if (!url.equals(pendingUrl)) {
-                        clog("Ignoring out of date request to update view for " + url);
+                        clog("Ignoring out of date request to update view for " + url + " " + pendingUrl + " " + iv);
                         continue;
                     }
                     waitingCount++;
