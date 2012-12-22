@@ -463,6 +463,7 @@ public final class UrlImageViewHelper {
         // disassociate this ImageView from any pending downloads
         if (isNullOrEmpty(url)) {
             if (imageView != null) {
+                mPendingViews.remove(imageView);
                 imageView.setImageDrawable(defaultDrawable);
             }
             return;
@@ -511,6 +512,7 @@ public final class UrlImageViewHelper {
 
         if (drawable != null) {
             if (imageView != null) {
+                mPendingViews.remove(imageView);
                 imageView.setImageDrawable(drawable);
             }
             if (callback != null) {
@@ -523,15 +525,12 @@ public final class UrlImageViewHelper {
         // let's prepare for an asynchronous load of the image.
 
         // null it while it is downloading
-        if (imageView != null) {
-            imageView.setImageDrawable(defaultDrawable);
-        }
-
         // since listviews reuse their views, we need to
         // take note of which url this view is waiting for.
         // This may change rapidly as the list scrolls or is filtered, etc.
         clog("Waiting for " + url);
         if (imageView != null) {
+            imageView.setImageDrawable(defaultDrawable);
             mPendingViews.put(imageView, url);
         }
 
