@@ -426,6 +426,18 @@ public final class UrlImageViewHelper {
     private static boolean checkCacheDuration(File file, long cacheDurationMs) {
         return cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs;
     }
+    
+    public static Drawable getImmediateMutableDrawable(String url) {
+        Drawable ret = mDeadCache.get(url);
+        if (ret != null)
+            return ret;
+        ret = mLiveCache.get(url);
+        if (ret != null && ret instanceof ZombieDrawable) {
+            ZombieDrawable zd = (ZombieDrawable)ret;
+            return zd.getBitmapDrawable().mutate();
+        }
+        return null;
+    }
 
     /**
      * Download and shrink an Image located at a specified URL, and display it

@@ -66,5 +66,13 @@ public class WrapperDrawable extends Drawable {
     @Deprecated
     public BitmapDrawable toBitmapDrawable() {
         return mDrawable;
+    }  
+    
+    /**
+     * Returns the underlying {@link BitmapDrawable}.
+     * @return An instance of {@link BitmapDrawable}
+     */
+    public BitmapDrawable getBitmapDrawable() {
+        return mDrawable;
     }
 }
