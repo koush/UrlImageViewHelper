@@ -36,6 +36,7 @@ import android.provider.ContactsContract;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.widget.ImageView;
+import android.view.WindowManager;
 
 public final class UrlImageViewHelper {
     private static void clog(String format, Object... args) {
@@ -67,8 +68,10 @@ public final class UrlImageViewHelper {
             return;
         }
         mMetrics = new DisplayMetrics();
-        final Activity act = (Activity)context;
-        act.getWindowManager().getDefaultDisplay().getMetrics(mMetrics);
+        //final Activity act = (Activity)context;
+        //act.getWindowManager().getDefaultDisplay().getMetrics(mMetrics);
+        ((WindowManager) context.getSystemService(Context.WINDOW_SERVICE))
+        .getDefaultDisplay().getMetrics(mMetrics);
         final AssetManager mgr = context.getAssets();
         mResources = new Resources(mgr, mMetrics, context.getResources().getConfiguration());
     }
