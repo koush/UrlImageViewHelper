@@ -1,4 +1,4 @@
-package com.koushikdutta.test;
+package com.koushikdutta.urlimageviewhelper.sample;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -27,6 +27,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.koushikdutta.test.R;
 import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
 
 public class UrlImageViewHelperSample extends Activity {
