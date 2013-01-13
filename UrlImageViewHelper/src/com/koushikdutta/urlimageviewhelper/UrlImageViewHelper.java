@@ -1,6 +1,7 @@
 package com.koushikdutta.urlimageviewhelper;
 
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -17,7 +18,6 @@ import junit.framework.Assert;
 import org.apache.http.NameValuePair;
 
 import android.annotation.TargetApi;
-import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -32,11 +32,12 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import android.provider.ContactsContract;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.widget.ImageView;
 import android.view.WindowManager;
+import android.widget.ImageView;
 
 public final class UrlImageViewHelper {
     private static void clog(String format, Object... args) {
@@ -132,6 +133,48 @@ public final class UrlImageViewHelper {
                     stream.close();
                 } catch (IOException e) {
                     Log.w(Constants.LOGTAG, "Failed to close FileInputStream", e);
+                }
+            }
+        }
+    }
+
+    private static Drawable loadDrawableFromUrl(final Context context, final String url, final int targetWidth,
+            final int targetHeight) {
+        prepareResources(context);
+
+        // Log.v(Constants.LOGTAG,targetWidth);
+        // Log.v(Constants.LOGTAG,targetHeight);
+        clog("Decoding: " + url);
+        ParcelFileDescriptor pfd = null;
+        try {
+            pfd = context.getContentResolver().openFileDescriptor(Uri.parse(url), "r");
+            if (pfd == null)
+                return null;
+            FileDescriptor fd = pfd.getFileDescriptor();
+            BitmapFactory.Options o = null;
+            if (mUseBitmapScaling) {
+                o = new BitmapFactory.Options();
+                o.inJustDecodeBounds = true;
+                BitmapFactory.decodeFileDescriptor(fd, null, o);
+                int scale = 0;
+                while ((o.outWidth >> scale) > targetWidth || (o.outHeight >> scale) > targetHeight) {
+                    scale++;
+                }
+                o = new Options();
+                o.inSampleSize = 1 << scale;
+            }
+            final Bitmap bitmap = BitmapFactory.decodeFileDescriptor(fd, null, o);
+            clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
+            final BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
+            return new ZombieDrawable(url, bd);
+        } catch (final IOException e) {
+            return null;
+        } finally {
+            if (pfd != null) {
+                try {
+                    pfd.close();
+                } catch (IOException e) {
+                    Log.w(Constants.LOGTAG, "Failed to close ParcelFileDescriptor", e);
                 }
             }
         }
@@ -483,8 +526,13 @@ public final class UrlImageViewHelper {
         tw = mMetrics.widthPixels;
         th = mMetrics.heightPixels;
 
-        final String filename = context.getFileStreamPath(getFilenameForUrl(url)).getAbsolutePath();
-        final File file = new File(filename);
+        final String filename;
+        if (url.startsWith(ContentResolver.SCHEME_CONTENT)
+                && !url.startsWith(ContactsContract.Contacts.CONTENT_URI.toString()))
+            filename = null;
+        else
+            filename = context.getFileStreamPath(getFilenameForUrl(url)).getAbsolutePath();
+        final File file = filename != null ? new File(filename) : null;
 
         if (mDeadCache == null) {
             mDeadCache = new UrlLruCache(getHeapSize(context) / 8);
@@ -506,7 +554,7 @@ public final class UrlImageViewHelper {
             // note that the file must exist, otherwise it is using a default.
             // not checking for file existence would do a network call on every
             // 404 or failed load.
-            if (file.exists() && !checkCacheDuration(file, cacheDurationMs)) {
+            if (file != null && file.exists() && !checkCacheDuration(file, cacheDurationMs)) {
                 clog("Cache hit, but file is stale. Forcing reload: " + url);
                 if (drawable instanceof ZombieDrawable)
                     ((ZombieDrawable)drawable).headshot();
@@ -566,7 +614,12 @@ public final class UrlImageViewHelper {
             @Override
             public void run() {
                 try {
-                    result = loadDrawableFromStream(context, url, filename, targetWidth, targetHeight);
+                    if (filename == null) {
+                        // do not use cached file.
+                        result = loadDrawableFromUrl(context, url, targetWidth, targetHeight);
+                    } else {
+                        result = loadDrawableFromStream(context, url, filename, targetWidth, targetHeight);
+                    }
                 }
                 catch (final Exception ex) {
                     if (Constants.LOG_ENABLED)
@@ -611,7 +664,7 @@ public final class UrlImageViewHelper {
         };
 
 
-        if (file.exists()) {
+        if (file != null && file.exists()) {
             try {
                 if (checkCacheDuration(file, cacheDurationMs)) {
                     clog("File Cache hit on: " + url + ". " + (System.currentTimeMillis() - file.lastModified()) + "ms old.");
@@ -655,6 +708,10 @@ public final class UrlImageViewHelper {
             final AsyncTask<Void, Void, Void> downloader = new AsyncTask<Void, Void, Void>() {
                 @Override
                 protected Void doInBackground(final Void... params) {
+                    if (filename == null) {
+                        loader.run();
+                        return null;
+                    }
                     try {
                         InputStream is = null;
                         if (url.startsWith(ContentResolver.SCHEME_CONTENT)) {
