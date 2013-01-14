@@ -3,6 +3,7 @@ package com.koushikdutta.urlimageviewhelper;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +33,6 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Looper;
-import android.os.ParcelFileDescriptor;
 import android.provider.ContactsContract;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -98,83 +98,134 @@ public final class UrlImageViewHelper {
         return mUseBitmapScaling;
     }
 
-    private static Drawable loadDrawableFromStream(final Context context, final String url, final String filename, final int targetWidth, final int targetHeight) {
-        prepareResources(context);
-
-//        Log.v(Constants.LOGTAG,targetWidth);
-//        Log.v(Constants.LOGTAG,targetHeight);
-        FileInputStream stream = null;
-        clog("Decoding: " + url + " " + filename);
-        try {
-            BitmapFactory.Options o = null;
-            if (mUseBitmapScaling) {
-                o = new BitmapFactory.Options();
-                o.inJustDecodeBounds = true;
-                stream = new FileInputStream(filename);
-                BitmapFactory.decodeStream(stream, null, o);
-                stream.close();
-                int scale = 0;
-                while ((o.outWidth >> scale) > targetWidth || (o.outHeight >> scale) > targetHeight) {
-                    scale++;
-                }
-                o = new Options();
-                o.inSampleSize = 1 << scale;
-            }
-            stream = new FileInputStream(filename);
-            final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
-            clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
-            final BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
-            return new ZombieDrawable(url, bd);
-        } catch (final IOException e) {
-            return null;
-        } finally {
-            if (stream != null) {
-                try {
-                    stream.close();
-                } catch (IOException e) {
-                    Log.w(Constants.LOGTAG, "Failed to close FileInputStream", e);
-                }
-            }
+    private static Options getOptionsFromTargetWidthHeight(Options o, int targetWidth, int targetHeight) {
+        int scale = 0;
+        while ((o.outWidth >> scale) > targetWidth || (o.outHeight >> scale) > targetHeight) {
+            scale++;
         }
+        o = new Options();
+        o.inSampleSize = 1 << scale;
+        return o;
     }
 
-    private static Drawable loadDrawableFromUrl(final Context context, final String url, final int targetWidth,
-            final int targetHeight) {
+    private static final String LOCAL_URL_CONTENT = ContentResolver.SCHEME_CONTENT + "://";
+    private static final String LOCAL_URL_CONTACTS = ContactsContract.Contacts.CONTENT_URI.toString();
+    private static final String LOCAL_URL_FILE = ContentResolver.SCHEME_FILE + "://";
+
+    private static InputStream getInputStreamFromUrlOrFilename(Context context, String url, String filename) {
+        if (filename != null) {
+            try {
+                return new FileInputStream(filename);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        } else if (url.startsWith(LOCAL_URL_CONTACTS)) {
+            return ContactsContract.Contacts.openContactPhotoInputStream(context.getContentResolver(), Uri.parse(url));
+        } else if (url.startsWith(LOCAL_URL_CONTENT) || url.startsWith(LOCAL_URL_FILE)) {
+            try {
+                return context.getContentResolver().openInputStream(Uri.parse(url));
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        } else {
+            try {
+                String thisUrl = url;
+                HttpURLConnection urlConnection;
+                while (true) {
+                    final URL u = new URL(thisUrl);
+                    urlConnection = (HttpURLConnection) u.openConnection();
+                    urlConnection.setInstanceFollowRedirects(true);
+
+                    if (mRequestPropertiesCallback != null) {
+                        final ArrayList<NameValuePair> props = mRequestPropertiesCallback.getHeadersForRequest(context,
+                                url);
+                        if (props != null) {
+                            for (final NameValuePair pair : props) {
+                                urlConnection.addRequestProperty(pair.getName(), pair.getValue());
+                            }
+                        }
+                    }
+
+                    if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_TEMP
+                            && urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_PERM)
+                        break;
+                    thisUrl = urlConnection.getHeaderField("Location");
+                }
+
+                if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                    clog("Response Code: " + urlConnection.getResponseCode());
+                    return null;
+                }
+
+                return urlConnection.getInputStream();
+            } catch (final Throwable e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
+
+    private static Drawable loadDrawableFromStream(Context context, String url, String filename, int targetWidth,
+            int targetHeight) {
         prepareResources(context);
 
         // Log.v(Constants.LOGTAG,targetWidth);
         // Log.v(Constants.LOGTAG,targetHeight);
-        clog("Decoding: " + url);
-        ParcelFileDescriptor pfd = null;
+        clog("Decoding: " + url + ", filename=" + filename);
+        android.util.Log.i("nora", "loadDrawableFromLocalUrl " + url + ", w=" + targetWidth + ", h=" + targetHeight
+                + ", filename=" + filename);
+        InputStream is = null;
         try {
-            pfd = context.getContentResolver().openFileDescriptor(Uri.parse(url), "r");
-            if (pfd == null)
+            is = getInputStreamFromUrlOrFilename(context, url, filename);
+            if (is == null)
                 return null;
-            FileDescriptor fd = pfd.getFileDescriptor();
-            BitmapFactory.Options o = null;
-            if (mUseBitmapScaling) {
-                o = new BitmapFactory.Options();
-                o.inJustDecodeBounds = true;
-                BitmapFactory.decodeFileDescriptor(fd, null, o);
-                int scale = 0;
-                while ((o.outWidth >> scale) > targetWidth || (o.outHeight >> scale) > targetHeight) {
-                    scale++;
+
+            final Bitmap bitmap;
+            if (is instanceof FileInputStream) {
+                FileDescriptor fd = ((FileInputStream) is).getFD();
+                android.util.Log.i("nora", "loadDrawableFromLocalUrl is=" + is + ", fd=" + fd);
+                Options o = null;
+                if (mUseBitmapScaling) {
+                    o = new Options();
+                    o.inJustDecodeBounds = true;
+                    BitmapFactory.decodeFileDescriptor(fd, null, o);
+                    o = getOptionsFromTargetWidthHeight(o, targetWidth, targetHeight);
                 }
-                o = new Options();
-                o.inSampleSize = 1 << scale;
+                bitmap = BitmapFactory.decodeFileDescriptor(fd, null, o);
+            } else {
+                android.util.Log.i("nora", "loadDrawableFromLocalUrl stream " + is);
+                Options o = null;
+                if (mUseBitmapScaling) {
+                    o = new Options();
+                    o.inJustDecodeBounds = true;
+                    BitmapFactory.decodeStream(is, null, o);
+                    o = getOptionsFromTargetWidthHeight(o, targetWidth, targetHeight);
+                    if (is.markSupported())
+                        is.reset();
+                    else {
+                        is.close();
+                        is = getInputStreamFromUrlOrFilename(context, url, filename);
+                    }
+                }
+                bitmap = BitmapFactory.decodeStream(is, null, o);
             }
-            final Bitmap bitmap = BitmapFactory.decodeFileDescriptor(fd, null, o);
-            clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
-            final BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
-            return new ZombieDrawable(url, bd);
+            if (bitmap == null) {
+                android.util.Log.i("nora", "loadDrawableFromLocalUrl bitmap " + bitmap);
+                return null;
+            } else {
+                clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
+                final BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
+                return new ZombieDrawable(url, bd);
+            }
         } catch (final IOException e) {
             return null;
         } finally {
-            if (pfd != null) {
+            if (is != null) {
                 try {
-                    pfd.close();
+                    is.close();
                 } catch (IOException e) {
-                    Log.w(Constants.LOGTAG, "Failed to close ParcelFileDescriptor", e);
+                    // e.printStackTrace();
+                    Log.w(Constants.LOGTAG, "Failed to close InputStream", e);
                 }
             }
         }
@@ -527,12 +578,14 @@ public final class UrlImageViewHelper {
         th = mMetrics.heightPixels;
 
         final String filename;
-        if (url.startsWith(ContentResolver.SCHEME_CONTENT)
-                && !url.startsWith(ContactsContract.Contacts.CONTENT_URI.toString()))
+        final File file;
+        if (url.startsWith(LOCAL_URL_CONTENT) || url.startsWith(LOCAL_URL_FILE) || url.startsWith(LOCAL_URL_CONTACTS)) {
             filename = null;
-        else
+            file = null;
+        } else {
             filename = context.getFileStreamPath(getFilenameForUrl(url)).getAbsolutePath();
-        final File file = filename != null ? new File(filename) : null;
+            file = new File(filename);
+        }
 
         if (mDeadCache == null) {
             mDeadCache = new UrlLruCache(getHeapSize(context) / 8);
@@ -614,12 +667,7 @@ public final class UrlImageViewHelper {
             @Override
             public void run() {
                 try {
-                    if (filename == null) {
-                        // do not use cached file.
-                        result = loadDrawableFromUrl(context, url, targetWidth, targetHeight);
-                    } else {
-                        result = loadDrawableFromStream(context, url, filename, targetWidth, targetHeight);
-                    }
+                    result = loadDrawableFromStream(context, url, filename, targetWidth, targetHeight);
                 }
                 catch (final Exception ex) {
                     if (Constants.LOG_ENABLED)
@@ -708,62 +756,22 @@ public final class UrlImageViewHelper {
             final AsyncTask<Void, Void, Void> downloader = new AsyncTask<Void, Void, Void>() {
                 @Override
                 protected Void doInBackground(final Void... params) {
-                    if (filename == null) {
-                        loader.run();
-                        return null;
-                    }
-                    try {
-                        InputStream is = null;
-                        if (url.startsWith(ContentResolver.SCHEME_CONTENT)) {
-                            final ContentResolver cr = context.getContentResolver();
-                            if (url.startsWith(ContactsContract.Contacts.CONTENT_URI.toString())) {
-                                is = ContactsContract.Contacts.openContactPhotoInputStream(cr, Uri.parse(url));
-                            } else {
-                                is = cr.openInputStream(Uri.parse(url));
+                    if (filename != null) {
+                        InputStream is = getInputStreamFromUrlOrFilename(context, url, null);
+                        try {
+                            if (is != null) {
+                                final FileOutputStream fos = new FileOutputStream(filename);
+                                copyStream(is, fos);
+                                fos.close();
+                                is.close();
                             }
+                        } catch (final Throwable e) {
+                            e.printStackTrace();
+                            return null;
                         }
-                        else {
-                            String thisUrl = url;
-                            HttpURLConnection urlConnection;
-                            while (true) {
-                                final URL u = new URL(thisUrl);
-                                urlConnection = (HttpURLConnection)u.openConnection();
-                                urlConnection.setInstanceFollowRedirects(true);
-
-                                if (mRequestPropertiesCallback != null) {
-                                    final ArrayList<NameValuePair> props = mRequestPropertiesCallback.getHeadersForRequest(context, url);
-                                    if (props != null) {
-                                        for (final NameValuePair pair: props) {
-                                            urlConnection.addRequestProperty(pair.getName(), pair.getValue());
-                                        }
-                                    }
-                                }
-
-                                if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_TEMP && urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_PERM)
-                                    break;
-                                thisUrl = urlConnection.getHeaderField("Location");
-                            }
-
-                            if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                                clog("Response Code: " + urlConnection.getResponseCode());
-                                return null;
-                            }
-                            is = urlConnection.getInputStream();
-                        }
-
-                        if (is != null) {
-                            final FileOutputStream fos = new FileOutputStream(filename);
-                            copyStream(is, fos);
-                            fos.close();
-                            is.close();
-                        }
-                        loader.run();
-                        return null;
                     }
-                    catch (final Throwable e) {
-                        e.printStackTrace();
-                        return null;
-                    }
+                    loader.run();
+                    return null;
                 }
 
                 @Override
