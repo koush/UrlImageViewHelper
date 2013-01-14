@@ -172,8 +172,6 @@ public final class UrlImageViewHelper {
         // Log.v(Constants.LOGTAG,targetWidth);
         // Log.v(Constants.LOGTAG,targetHeight);
         clog("Decoding: " + url + ", filename=" + filename);
-        android.util.Log.i("nora", "loadDrawableFromLocalUrl " + url + ", w=" + targetWidth + ", h=" + targetHeight
-                + ", filename=" + filename);
         InputStream is = null;
         try {
             is = getInputStreamFromUrlOrFilename(context, url, filename);
@@ -183,7 +181,6 @@ public final class UrlImageViewHelper {
             final Bitmap bitmap;
             if (is instanceof FileInputStream) {
                 FileDescriptor fd = ((FileInputStream) is).getFD();
-                android.util.Log.i("nora", "loadDrawableFromLocalUrl is=" + is + ", fd=" + fd);
                 Options o = null;
                 if (mUseBitmapScaling) {
                     o = new Options();
@@ -193,7 +190,6 @@ public final class UrlImageViewHelper {
                 }
                 bitmap = BitmapFactory.decodeFileDescriptor(fd, null, o);
             } else {
-                android.util.Log.i("nora", "loadDrawableFromLocalUrl stream " + is);
                 Options o = null;
                 if (mUseBitmapScaling) {
                     o = new Options();
@@ -210,7 +206,6 @@ public final class UrlImageViewHelper {
                 bitmap = BitmapFactory.decodeStream(is, null, o);
             }
             if (bitmap == null) {
-                android.util.Log.i("nora", "loadDrawableFromLocalUrl bitmap " + bitmap);
                 return null;
             } else {
                 clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
