@@ -6,8 +6,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -17,9 +15,7 @@ import junit.framework.Assert;
 import org.apache.http.NameValuePair;
 
 import android.annotation.TargetApi;
-import android.app.Activity;
 import android.app.ActivityManager;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
@@ -28,18 +24,16 @@ import android.graphics.BitmapFactory;
 import android.graphics.BitmapFactory.Options;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Looper;
-import android.provider.ContactsContract;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.widget.ImageView;
 import android.view.WindowManager;
+import android.widget.ImageView;
 
 public final class UrlImageViewHelper {
-    private static void clog(String format, Object... args) {
+    static void clog(String format, Object... args) {
         String log;
         if (args.length == 0)
             log = format;
@@ -564,11 +558,21 @@ public final class UrlImageViewHelper {
         final int targetHeight = th <= 0 ? Integer.MAX_VALUE : th;
         final Loader loader = new Loader() {
             @Override
-            public void run() {
+            public void onDownloadComplete(UrlDownloader downloader, InputStream in, String existingFilename) {
                 try {
+                    Assert.assertTrue(in == null || existingFilename == null);
+                    if (in == null && existingFilename == null)
+                        return;
+                    if (in != null) {
+                        FileOutputStream fout = new FileOutputStream(filename);
+                        copyStream(in, fout);
+                        fout.close();
+                    }
                     result = loadDrawableFromStream(context, url, filename, targetWidth, targetHeight);
                 }
                 catch (final Exception ex) {
+                    if (downloader != null && !downloader.allowCache() && existingFilename == null)
+                        new File(filename).delete();
                     if (Constants.LOG_ENABLED)
                         Log.e(Constants.LOGTAG, "Error loading " + url, ex);
                 }
@@ -583,9 +587,10 @@ public final class UrlImageViewHelper {
                 if (usableResult == null) {
                     clog("No usable result, defaulting " + url);
                     usableResult = defaultDrawable;
+                    mLiveCache.put(url, usableResult);
                 }
                 mPendingDownloads.remove(url);
-                mLiveCache.put(url, usableResult);
+//                mLiveCache.put(url, usableResult);
                 if (callback != null && imageView == null)
                     callback.onLoaded(null, loader.result, url, false);
                 int waitingCount = 0;
@@ -619,7 +624,7 @@ public final class UrlImageViewHelper {
                     final AsyncTask<Void, Void, Void> fileloader = new AsyncTask<Void, Void, Void>() {
                         @Override
                         protected Void doInBackground(final Void... params) {
-                            loader.run();
+                            loader.onDownloadComplete(null, null, filename);
                             return null;
                         }
                         @Override
@@ -637,88 +642,37 @@ public final class UrlImageViewHelper {
             catch (final Exception ex) {
             }
         }
-
-        mDownloader.download(context, url, filename, loader, completion);
+        
+        for (UrlDownloader downloader: mDownloaders) {
+            if (downloader.canDownloadUrl(url)) {
+                downloader.download(context, url, filename, loader, completion);
+                return;
+            }
+        }
+        
+        imageView.setImageDrawable(defaultDrawable);
     }
 
-    private static abstract class Loader implements Runnable {
+    private static abstract class Loader implements UrlDownloader.UrlDownloaderCallback {
         Drawable result;
     }
-
-    public static interface UrlDownloader {
-        public void download(Context context, String url, String filename, Runnable loader, Runnable completion);
+    
+    private static HttpUrlDownloader mHttpDownloader = new HttpUrlDownloader();
+    private static ContentUrlDownloader mContentDownloader = new ContentUrlDownloader();
+    private static ContactContentUrlDownloader mContactDownloader = new ContactContentUrlDownloader();
+    private static FileUrlDownloader mFileDownloader = new FileUrlDownloader();
+    private static ArrayList<UrlDownloader> mDownloaders = new ArrayList<UrlDownloader>();
+    public static ArrayList<UrlDownloader> getDownloaders() {
+        return mDownloaders;
     }
-
-    private static UrlDownloader mDefaultDownloader = new UrlDownloader() {
-        @Override
-        public void download(final Context context, final String url, final String filename, final Runnable loader, final Runnable completion) {
-            final AsyncTask<Void, Void, Void> downloader = new AsyncTask<Void, Void, Void>() {
-                @Override
-                protected Void doInBackground(final Void... params) {
-                    try {
-                        InputStream is = null;
-                        if (url.startsWith(ContentResolver.SCHEME_CONTENT)) {
-                            final ContentResolver cr = context.getContentResolver();
-                            if (url.startsWith(ContactsContract.Contacts.CONTENT_URI.toString())) {
-                                is = ContactsContract.Contacts.openContactPhotoInputStream(cr, Uri.parse(url));
-                            } else {
-                                is = cr.openInputStream(Uri.parse(url));
-                            }
-                        }
-                        else {
-                            String thisUrl = url;
-                            HttpURLConnection urlConnection;
-                            while (true) {
-                                final URL u = new URL(thisUrl);
-                                urlConnection = (HttpURLConnection)u.openConnection();
-                                urlConnection.setInstanceFollowRedirects(true);
-
-                                if (mRequestPropertiesCallback != null) {
-                                    final ArrayList<NameValuePair> props = mRequestPropertiesCallback.getHeadersForRequest(context, url);
-                                    if (props != null) {
-                                        for (final NameValuePair pair: props) {
-                                            urlConnection.addRequestProperty(pair.getName(), pair.getValue());
-                                        }
-                                    }
-                                }
-
-                                if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_TEMP && urlConnection.getResponseCode() != HttpURLConnection.HTTP_MOVED_PERM)
-                                    break;
-                                thisUrl = urlConnection.getHeaderField("Location");
-                            }
-
-                            if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                                clog("Response Code: " + urlConnection.getResponseCode());
-                                return null;
-                            }
-                            is = urlConnection.getInputStream();
-                        }
-
-                        if (is != null) {
-                            final FileOutputStream fos = new FileOutputStream(filename);
-                            copyStream(is, fos);
-                            fos.close();
-                            is.close();
-                        }
-                        loader.run();
-                        return null;
-                    }
-                    catch (final Throwable e) {
-                        e.printStackTrace();
-                        return null;
-                    }
-                }
-
-                @Override
-                protected void onPostExecute(final Void result) {
-                    completion.run();
-                }
-            };
-
-            executeTask(downloader);
-        }
-    };
-
+    
+    static {
+        mDownloaders.add(mHttpDownloader);
+        mDownloaders.add(mContactDownloader);
+        mDownloaders.add(mContentDownloader);
+        mDownloaders.add(mFileDownloader);
+    }
+    
     public static interface RequestPropertiesCallback {
         public ArrayList<NameValuePair> getHeadersForRequest(Context context, String url);
     }
@@ -731,19 +685,6 @@ public final class UrlImageViewHelper {
 
     public static void setRequestPropertiesCallback(final RequestPropertiesCallback callback) {
         mRequestPropertiesCallback = callback;
-    }
-
-
-    public static void useDownloader(final UrlDownloader downloader) {
-        mDownloader = downloader;
-    }
-
-    public static void useDefaultDownloader() {
-        mDownloader = mDefaultDownloader;
-    }
-
-    public static UrlDownloader getDefaultDownloader() {
-        return mDownloader;
     }
 
     private static UrlImageCache mLiveCache = UrlImageCache.getInstance();
@@ -787,9 +728,7 @@ public final class UrlImageViewHelper {
         }
     }
 
-    private static UrlDownloader mDownloader = mDefaultDownloader;
-
-    private static void executeTask(final AsyncTask<Void, Void, Void> task) {
+    static void executeTask(final AsyncTask<Void, Void, Void> task) {
         if (Build.VERSION.SDK_INT < Constants.HONEYCOMB) {
             task.execute();
         } else {
