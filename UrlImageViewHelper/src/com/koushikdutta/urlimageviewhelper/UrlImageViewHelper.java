@@ -563,12 +563,16 @@ public final class UrlImageViewHelper {
                     Assert.assertTrue(in == null || existingFilename == null);
                     if (in == null && existingFilename == null)
                         return;
+                    String targetFilename = filename;
                     if (in != null) {
                         FileOutputStream fout = new FileOutputStream(filename);
                         copyStream(in, fout);
                         fout.close();
                     }
-                    result = loadDrawableFromStream(context, url, filename, targetWidth, targetHeight);
+                    else {
+                        targetFilename = existingFilename;
+                    }
+                    result = loadDrawableFromStream(context, url, targetFilename, targetWidth, targetHeight);
                 }
                 catch (final Exception ex) {
                     if (downloader != null && !downloader.allowCache())
