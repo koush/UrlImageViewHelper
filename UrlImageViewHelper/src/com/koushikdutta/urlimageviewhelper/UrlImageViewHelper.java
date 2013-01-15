@@ -571,7 +571,7 @@ public final class UrlImageViewHelper {
                     result = loadDrawableFromStream(context, url, filename, targetWidth, targetHeight);
                 }
                 catch (final Exception ex) {
-                    if (downloader != null && !downloader.allowCache() && existingFilename == null)
+                    if (downloader != null && !downloader.allowCache())
                         new File(filename).delete();
                     if (Constants.LOG_ENABLED)
                         Log.e(Constants.LOGTAG, "Error loading " + url, ex);
