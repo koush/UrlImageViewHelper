@@ -517,7 +517,14 @@ public final class UrlImageViewHelper {
                 imageView.setImageDrawable(drawable);
             }
             if (callback != null) {
-                callback.onLoaded(imageView, drawable, url, true);
+                // when invoking the callback from cache, check to see if this was
+                // a drawable that was successfully loaded from the filesystem or url.
+                // this will be indicated by it being a ZombieDrawable (ie, something we are managing).
+                // The default drawables will be BitmapDrawables (or whatever else the user passed in).
+                Drawable loaderResult = null;
+                if (drawable instanceof ZombieDrawable)
+                    loaderResult = drawable;
+                callback.onLoaded(imageView, loaderResult, url, true);
             }
             return;
         }
@@ -575,10 +582,15 @@ public final class UrlImageViewHelper {
                     result = loadDrawableFromStream(context, url, targetFilename, targetWidth, targetHeight);
                 }
                 catch (final Exception ex) {
-                    if (downloader != null && !downloader.allowCache())
-                        new File(filename).delete();
+                    // always delete busted files when we throw.
+                    new File(filename).delete();
                     if (Constants.LOG_ENABLED)
                         Log.e(Constants.LOGTAG, "Error loading " + url, ex);
+                }
+                finally {
+                    // if we're not supposed to cache this thing, delete the temp file.
+                    if (downloader != null && !downloader.allowCache())
+                        new File(filename).delete();
                 }
             }
         };
