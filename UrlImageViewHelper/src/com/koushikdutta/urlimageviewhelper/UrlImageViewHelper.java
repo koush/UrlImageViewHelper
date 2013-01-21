@@ -624,9 +624,9 @@ public final class UrlImageViewHelper {
                         iv.setImageDrawable(usableResult);
 //                        System.out.println(String.format("imageView: %dx%d, %dx%d", imageView.getMeasuredWidth(), imageView.getMeasuredHeight(), imageView.getWidth(), imageView.getHeight()));
                         // onLoaded is called with the loader's result (not what is actually used). null indicates failure.
-                        if (callback != null && iv == imageView)
-                            callback.onLoaded(iv, loader.result, url, false);
                     }
+                    if (callback != null && iv == imageView)
+                        callback.onLoaded(iv, loader.result, url, false);
                 }
                 clog("Populated: " + waitingCount);
             }
