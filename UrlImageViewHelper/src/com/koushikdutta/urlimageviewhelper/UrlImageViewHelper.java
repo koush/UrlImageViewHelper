@@ -460,6 +460,7 @@ public final class UrlImageViewHelper {
      *            value can be null.
      */
     private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, final long cacheDurationMs, final UrlImageViewCallback callback) {
+        Assert.assertTrue("setUrlDrawable and loadUrlDrawable should only be called from the main thread.", Looper.getMainLooper().getThread() == Thread.currentThread());
         cleanup(context);
         // disassociate this ImageView from any pending downloads
         if (isNullOrEmpty(url)) {
