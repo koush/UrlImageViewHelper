@@ -488,7 +488,7 @@ public final class UrlImageViewHelper {
         if (bd != null) {
             // this drawable was resurrected, it should not be in the live cache
             clog("zombie load: " + url);
-            Assert.assertTrue(url, !mAllCache.contains(bd));
+//            Assert.assertTrue(url, !mAllCache.contains(bd));
             drawable = new ZombieDrawable(url, bd);
         } else {
             drawable = mLiveCache.get(url);
