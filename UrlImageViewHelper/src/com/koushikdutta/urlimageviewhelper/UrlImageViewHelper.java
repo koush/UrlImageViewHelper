@@ -22,8 +22,10 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.BitmapFactory.Options;
+import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.media.ExifInterface;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Looper;
@@ -114,8 +116,39 @@ public final class UrlImageViewHelper {
                 o.inSampleSize = 1 << scale;
             }
             stream = new FileInputStream(filename);
-            final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
+            Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
             clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
+            
+            /*
+            Get EXIF Information of file and check if a rotation is required
+            */
+           int degree = 0;
+           try {
+               
+               ExifInterface exif = new ExifInterface(filename);
+               int orientation = exif.getAttributeInt(
+                                                      ExifInterface.TAG_ORIENTATION, 1);
+               if (orientation == 3) {
+                   degree = 180;
+               } else if (orientation == 6) {
+                   degree = 90;
+               } else if (orientation == 9) {
+                   degree = 270;
+               }
+               
+           } catch (IOException e1) {
+               //Worst Case: Do not rotate
+               degree = 0;
+           }
+           
+			if (degree > 0) {
+				// rotate image according to EXIF information
+				Matrix matrix = new Matrix();
+				matrix.postRotate(degree);
+				bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(),
+                                            bitmap.getHeight(), matrix, true);
+			}
+            
             final BitmapDrawable bd = new BitmapDrawable(mResources, bitmap);
             return new ZombieDrawable(url, bd);
         } catch (final IOException e) {
