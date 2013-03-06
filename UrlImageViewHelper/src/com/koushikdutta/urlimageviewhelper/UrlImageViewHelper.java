@@ -426,6 +426,8 @@ public final class UrlImageViewHelper {
     }
     
     public static Drawable getImmediateMutableDrawable(String url) {
+        if (url == null)
+            return null;
         Drawable ret = null;
         if (mDeadCache != null)
             ret = mDeadCache.get(url);
