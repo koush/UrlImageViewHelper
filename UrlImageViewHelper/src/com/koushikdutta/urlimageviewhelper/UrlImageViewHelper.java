@@ -424,7 +424,7 @@ public final class UrlImageViewHelper {
         return cacheDurationMs == CACHE_DURATION_INFINITE || System.currentTimeMillis() < file.lastModified() + cacheDurationMs;
     }
     
-    public static Bitmap getBitmap(String url) {
+    public static Bitmap getCachedBitmap(String url) {
         if (url == null)
             return null;
         Bitmap ret = null;
