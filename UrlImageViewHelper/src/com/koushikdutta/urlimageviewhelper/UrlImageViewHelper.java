@@ -10,8 +10,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Hashtable;
 
-import junit.framework.Assert;
-
 import org.apache.http.NameValuePair;
 
 import android.annotation.TargetApi;
@@ -460,7 +458,7 @@ public final class UrlImageViewHelper {
      *            value can be null.
      */
     private static void setUrlDrawable(final Context context, final ImageView imageView, final String url, final Drawable defaultDrawable, final long cacheDurationMs, final UrlImageViewCallback callback) {
-        Assert.assertTrue("setUrlDrawable and loadUrlDrawable should only be called from the main thread.", Looper.getMainLooper().getThread() == Thread.currentThread());
+        assert(Looper.getMainLooper().getThread() == Thread.currentThread()) : "setUrlDrawable and loadUrlDrawable should only be called from the main thread.";
         cleanup(context);
         // disassociate this ImageView from any pending downloads
         if (isNullOrEmpty(url)) {
@@ -568,7 +566,7 @@ public final class UrlImageViewHelper {
             @Override
             public void onDownloadComplete(UrlDownloader downloader, InputStream in, String existingFilename) {
                 try {
-                    Assert.assertTrue(in == null || existingFilename == null);
+                    assert(in == null || existingFilename == null);
                     if (in == null && existingFilename == null)
                         return;
                     String targetFilename = filename;
@@ -599,7 +597,7 @@ public final class UrlImageViewHelper {
         final Runnable completion = new Runnable() {
             @Override
             public void run() {
-                Assert.assertEquals(Looper.myLooper(), Looper.getMainLooper());
+                assert(Looper.myLooper().equals(Looper.getMainLooper()));
                 Drawable usableResult = loader.result;
                 if (usableResult == null) {
                     clog("No usable result, defaulting " + url);
