@@ -1,6 +1,6 @@
 package com.koushikdutta.urlimageviewhelper;
 
-import android.graphics.drawable.Drawable;
+import android.graphics.Bitmap;
 import android.widget.ImageView;
 
 /**
@@ -20,10 +20,10 @@ public interface UrlImageViewCallback {
     /**
      * 
      * @param imageView ImageView for the load request.
-     * @param loadedDrawable The drawable that was loaded by the request.
+     * @param loadedBitmap The bitmap that was loaded by the request.
      *                          If the drawable failed to load, this will be null.
      * @param url The url that was loaded.
      * @param loadedFromCache This will indicate whether the load operation result came from cache, or was retrieved.
      */
-    void onLoaded(ImageView imageView, Drawable loadedDrawable, String url, boolean loadedFromCache);
+    void onLoaded(ImageView imageView, Bitmap loadedBitmap, String url, boolean loadedFromCache);
 }
