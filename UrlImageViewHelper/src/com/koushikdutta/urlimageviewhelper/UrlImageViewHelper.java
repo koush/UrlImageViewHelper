@@ -484,12 +484,12 @@ public final class UrlImageViewHelper {
         if (mDeadCache == null) {
             mDeadCache = new LruBitmapCache(getHeapSize(context) / 8);
         }
-        Drawable drawable;
+        Drawable drawable = null;
         Bitmap bitmap = mDeadCache.remove(url);
         if (bitmap != null) {
             // this drawable was resurrected, it should not be in the live cache
             clog("zombie load: " + url);
-            drawable = new ZombieDrawable(url, mResources, bitmap);
+//            drawable = new ZombieDrawable(url, mResources, bitmap);
         } else {
             drawable = mLiveCache.get(url);
         }
@@ -511,10 +511,12 @@ public final class UrlImageViewHelper {
             }
         }
 
-        if (drawable != null) {
+        if (drawable != null || bitmap != null) {
             if (imageView != null) {
                 mPendingViews.remove(imageView);
-                if (drawable instanceof ZombieDrawable)
+                if (bitmap != null)
+                    drawable = new ZombieDrawable(url, mResources, bitmap);
+                else if (drawable instanceof ZombieDrawable)
                     drawable = ((ZombieDrawable)drawable).clone(mResources);
 
                 imageView.setImageDrawable(drawable);
