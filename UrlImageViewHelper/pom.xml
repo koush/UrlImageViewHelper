@@ -5,8 +5,21 @@
     <groupId>com.koushikdutta.urlimageviewhelper</groupId>
     <artifactId>urlimageviewhelper</artifactId>
     <version>1.0</version>
-    <packaging>apk</packaging>
     <name>UrlImageViewHelper</name>
+    <description>UrlImageViewHelper will fill an Android ImageView with an image that is found at a URL</description>
+    <url>https://github.com/koush/UrlImageViewHelper</url>
+
+    <licenses>
+        <license>
+          <name>The Apache Software License, Version 2.0</name>
+          <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+          <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/koush/UrlImageViewHelper.git</url>
+    </scm>
 
     <properties>
         <platform.version>4.1.1.4</platform.version>
