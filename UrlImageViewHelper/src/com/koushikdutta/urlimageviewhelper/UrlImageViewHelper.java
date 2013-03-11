@@ -481,20 +481,20 @@ public final class UrlImageViewHelper {
         final String filename = context.getFileStreamPath(getFilenameForUrl(url)).getAbsolutePath();
         final File file = new File(filename);
 
+        // check the dead and live cache to see if we can find this url's bitmap
         if (mDeadCache == null) {
             mDeadCache = new LruBitmapCache(getHeapSize(context) / 8);
         }
         Drawable drawable = null;
         Bitmap bitmap = mDeadCache.remove(url);
         if (bitmap != null) {
-            // this drawable was resurrected, it should not be in the live cache
             clog("zombie load: " + url);
-//            drawable = new ZombieDrawable(url, mResources, bitmap);
         } else {
             drawable = mLiveCache.get(url);
         }
 
-        if (drawable != null) {
+        // if something was found, verify it was fresh.
+        if (drawable != null || bitmap != null) {
             clog("Cache hit on: " + url);
             // if the file age is older than the cache duration, force a refresh.
             // note that the file must exist, otherwise it is using a default.
@@ -502,33 +502,35 @@ public final class UrlImageViewHelper {
             // 404 or failed load.
             if (file.exists() && !checkCacheDuration(file, cacheDurationMs)) {
                 clog("Cache hit, but file is stale. Forcing reload: " + url);
-                if (drawable instanceof ZombieDrawable)
+                if (drawable != null && drawable instanceof ZombieDrawable)
                     ((ZombieDrawable)drawable).headshot();
                 drawable = null;
+                bitmap = null;
             }
             else {
                 clog("Using cached: " + url);
             }
         }
 
+        // if the bitmap is fresh, set the imageview
         if (drawable != null || bitmap != null) {
             if (imageView != null) {
                 mPendingViews.remove(imageView);
-                if (bitmap != null)
-                    drawable = new ZombieDrawable(url, mResources, bitmap);
-                else if (drawable instanceof ZombieDrawable)
+                if (drawable instanceof ZombieDrawable)
                     drawable = ((ZombieDrawable)drawable).clone(mResources);
+                else if (bitmap != null)
+                    drawable = new ZombieDrawable(url, mResources, bitmap);
 
                 imageView.setImageDrawable(drawable);
             }
+            // invoke any bitmap callbacks
             if (callback != null) {
                 // when invoking the callback from cache, check to see if this was
                 // a drawable that was successfully loaded from the filesystem or url.
                 // this will be indicated by it being a ZombieDrawable (ie, something we are managing).
                 // The default drawables will be BitmapDrawables (or whatever else the user passed in).
-                Drawable loaderResult = null;
-                if (drawable instanceof ZombieDrawable)
-                    loaderResult = drawable;
+                if (bitmap == null && drawable instanceof ZombieDrawable)
+                    bitmap = ((ZombieDrawable)drawable).getBitmap();
                 callback.onLoaded(imageView, bitmap, url, true);
             }
             return;
@@ -723,7 +725,6 @@ public final class UrlImageViewHelper {
 
     /***
      * ZombieDrawable refcounts Bitmaps by hooking the finalizer.
-     * @author koush
      *
      */
     private static class ZombieDrawable extends BitmapDrawable {
