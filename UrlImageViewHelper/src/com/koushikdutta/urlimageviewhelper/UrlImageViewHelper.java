@@ -721,6 +721,11 @@ public final class UrlImageViewHelper {
         return ((ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryClass() * 1024 * 1024;
     }
 
+    /***
+     * ZombieDrawable refcounts Bitmaps by hooking the finalizer.
+     * @author koush
+     *
+     */
     private static class ZombieDrawable extends BitmapDrawable {
         private static class Brains {
             int mRefCounter;

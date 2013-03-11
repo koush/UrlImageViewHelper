@@ -1,6 +1,5 @@
 package com.koushikdutta.urlimageviewhelper;
 
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
