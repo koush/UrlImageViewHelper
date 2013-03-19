@@ -1,57 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>com.koushikdutta.urlimageviewhelper</groupId>
-    <artifactId>urlimageviewhelper</artifactId>
-    <version>1.0</version>
-    <name>UrlImageViewHelper</name>
-    <description>UrlImageViewHelper will fill an Android ImageView with an image that is found at a URL</description>
-    <url>https://github.com/koush/UrlImageViewHelper</url>
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.koushikdutta.urlimageviewhelper</groupId>
+	<artifactId>urlimageviewhelper</artifactId>
+	<version>1.0-SNAPSHOT</version>
+	<name>UrlImageViewHelper</name>
+	<description>UrlImageViewHelper will fill an Android ImageView with an image that is found at a URL</description>
+	<url>https://github.com/koush/UrlImageViewHelper</url>
 
-    <licenses>
-        <license>
-          <name>The Apache Software License, Version 2.0</name>
-          <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-          <distribution>repo</distribution>
-        </license>
-    </licenses>
+	<licenses>
+		<license>
+			<name>The Apache Software License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
 
-    <scm>
+	<scm>
+        <connection>scm:git:git://github.com/koush/UrlImageViewHelper.git</connection>
+        <developerConnection>scm:git:git@github.com:koush/UrlImageViewHelper.git</developerConnection>
         <url>https://github.com/koush/UrlImageViewHelper.git</url>
     </scm>
 
-    <properties>
-        <platform.version>4.1.1.4</platform.version>
-    </properties>
+	<properties>
+		<platform.version>4.1.1.4</platform.version>
+	</properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>com.google.android</groupId>
-            <artifactId>android</artifactId>
-            <version>${platform.version}</version>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
+	<dependencies>
+		<dependency>
+			<groupId>com.google.android</groupId>
+			<artifactId>android</artifactId>
+			<version>${platform.version}</version>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
 
-    <build>
-        <sourceDirectory>src</sourceDirectory>
-        <plugins>
-            <plugin>
-                <groupId>com.jayway.maven.plugins.android.generation2</groupId>
-                <artifactId>android-maven-plugin</artifactId>
-                <version>3.1.1</version>
-                <extensions>true</extensions>
-            </plugin>
+	<build>
+		<sourceDirectory>src</sourceDirectory>
+		<plugins>
+			<plugin>
+				<groupId>com.jayway.maven.plugins.android.generation2</groupId>
+				<artifactId>android-maven-plugin</artifactId>
+				<version>3.1.1</version>
+				<extensions>true</extensions>
+			</plugin>
 
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>2.3.2</version>
+				<configuration>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+			</plugin>
+			
+			<plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.2.2</version>
                 <configuration>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <!-- need this for gpg plugin to work correctly -->
+                    <mavenExecutorId>forked-path</mavenExecutorId>
                 </configuration>
             </plugin>
-        </plugins>
-    </build>
+		</plugins>
+	</build>
+
+	<profiles>
+		<profile>
+			<id>release-sign-artifacts</id>
+			<activation>
+				<property>
+					<name>performRelease</name>
+					<value>true</value>
+				</property>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.1</version>
+						<executions>
+							<execution>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>sign</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>
