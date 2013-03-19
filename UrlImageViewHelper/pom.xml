@@ -5,6 +5,7 @@
 	<groupId>com.koushikdutta.urlimageviewhelper</groupId>
 	<artifactId>urlimageviewhelper</artifactId>
 	<version>1.0-SNAPSHOT</version>
+	<packaging>jar</packaging>
 	<name>UrlImageViewHelper</name>
 	<description>UrlImageViewHelper will fill an Android ImageView with an image that is found at a URL</description>
 	<url>https://github.com/koush/UrlImageViewHelper</url>
@@ -18,10 +19,18 @@
 	</licenses>
 
 	<scm>
-        <connection>scm:git:git://github.com/koush/UrlImageViewHelper.git</connection>
-        <developerConnection>scm:git:git@github.com:koush/UrlImageViewHelper.git</developerConnection>
-        <url>https://github.com/koush/UrlImageViewHelper.git</url>
-    </scm>
+		<connection>scm:git:git://github.com/koush/UrlImageViewHelper.git</connection>
+		<developerConnection>scm:git:git@github.com:koush/UrlImageViewHelper.git</developerConnection>
+		<url>https://github.com/koush/UrlImageViewHelper.git</url>
+	</scm>
+
+	<developers>
+	    <developer>
+	        <id>koush</id>
+	        <name>Koushik Dutta</name>
+	        <email>koushd@gmail.com</email>
+	    </developer>
+	</developers>
 
 	<properties>
 		<platform.version>4.1.1.4</platform.version>
@@ -54,16 +63,16 @@
 					<target>1.6</target>
 				</configuration>
 			</plugin>
-			
+
 			<plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-release-plugin</artifactId>
-                <version>2.2.2</version>
-                <configuration>
-                    <!-- need this for gpg plugin to work correctly -->
-                    <mavenExecutorId>forked-path</mavenExecutorId>
-                </configuration>
-            </plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-release-plugin</artifactId>
+				<version>2.2.2</version>
+				<configuration>
+					<!-- need this for gpg plugin to work correctly -->
+					<mavenExecutorId>forked-path</mavenExecutorId>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
