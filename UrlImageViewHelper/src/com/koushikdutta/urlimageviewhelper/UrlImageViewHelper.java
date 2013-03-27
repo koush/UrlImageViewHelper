@@ -400,7 +400,7 @@ public final class UrlImageViewHelper {
                 }
 
                 final File f = new File(context.getFilesDir().getAbsolutePath() + '/' + file);
-                if (System.currentTimeMillis() > f.lastModified() + CACHE_DURATION_ONE_WEEK) {
+                if (System.currentTimeMillis() > f.lastModified() + age) {
                     f.delete();
                 }
             }
