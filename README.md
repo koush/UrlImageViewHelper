@@ -61,3 +61,10 @@ UrlImageViewHelper.setUrlDrawable(imageView, "content://com.android.contacts/con
 **Does it work in list adapters when views are reused? (convertView)**
 
 Yes.
+
+
+### Featured Implementations
+
+ * [ROM Manager](https://play.google.com/store/apps/details?id=com.koushikdutta.rommanager&hl=en)
+ * [Carbon](https://play.google.com/store/apps/details?id=com.koushikdutta.backup&hl=en)
+ * Let me know if you use this library, so I can add it to the list!
