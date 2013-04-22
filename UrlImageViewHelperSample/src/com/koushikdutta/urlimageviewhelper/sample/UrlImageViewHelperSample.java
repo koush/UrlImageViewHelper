@@ -23,8 +23,8 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridView;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.Toast;
 
 import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
@@ -45,7 +45,7 @@ public class UrlImageViewHelperSample extends Activity {
         return new String(buff.toByteArray());
     }
     
-    private ListView mListView;
+    private GridView mListView;
     private MyAdapter mAdapter;
     
     private class MyAdapter extends ArrayAdapter<String> {
@@ -57,10 +57,10 @@ public class UrlImageViewHelperSample extends Activity {
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             ImageView iv;
-            if (convertView == null)
-                convertView = iv = new ImageView(UrlImageViewHelperSample.this);
-            else
-                iv = (ImageView)convertView;
+//            if (convertView == null)
+                convertView = iv = (ImageView)getLayoutInflater().inflate(R.layout.image, null);
+//            else
+//                iv = (ImageView)convertView;
             
             // yep, that's it. it handles the downloading and showing an interstitial image automagically.
             UrlImageViewHelper.setUrlDrawable(iv, getItem(position), R.drawable.loading);
@@ -79,7 +79,7 @@ public class UrlImageViewHelperSample extends Activity {
         final Button search = (Button)findViewById(R.id.search);
         final EditText searchText = (EditText)findViewById(R.id.search_text);
         
-        mListView = (ListView)findViewById(R.id.results);
+        mListView = (GridView)findViewById(R.id.results);
         mAdapter = new MyAdapter(this);
         mListView.setAdapter(mAdapter);
         
