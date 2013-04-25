@@ -2,8 +2,11 @@ package com.koushikdutta.urlimageviewhelper.sample;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
 
 import org.apache.http.HttpEntity;
@@ -19,10 +22,11 @@ import android.database.DataSetObserver;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.animation.ScaleAnimation;
 import android.view.ViewGroup;
+import android.view.animation.ScaleAnimation;
 import android.widget.Adapter;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
@@ -33,6 +37,14 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.koushikdutta.async.callback.CompletedCallback;
+import com.koushikdutta.async.http.AsyncHttpClient;
+import com.koushikdutta.async.http.AsyncHttpGet;
+import com.koushikdutta.async.http.AsyncHttpResponse;
+import com.koushikdutta.async.http.HttpConnectCallback;
+import com.koushikdutta.async.stream.OutputStreamDataCallback;
+import com.koushikdutta.urlimageviewhelper.UrlDownloader;
+import com.koushikdutta.urlimageviewhelper.UrlDownloader.UrlDownloaderCallback;
 import com.koushikdutta.urlimageviewhelper.UrlImageViewCallback;
 import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
 
@@ -149,10 +161,66 @@ public class UrlImageViewHelperSample extends Activity {
         }
     }
 
+    static boolean added;
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        if (!added) {
+            final Handler handler = new Handler();
+            UrlImageViewHelper.getDownloaders().add(0, new UrlDownloader() {
+                @Override
+                public boolean canDownloadUrl(String url) {
+                    return url.startsWith("http") || url.startsWith("drive") || url.startsWith("dropbox") || url.startsWith("box") || url.startsWith("device");
+                }
+                
+                @Override
+                public boolean allowCache() {
+                    return true;
+                }
+                
+                UrlDownloader me = this;
+                
+                @Override
+                public void download(final Context context, String url, final String filename, final UrlDownloaderCallback callback, final Runnable completion) {
+                    AsyncHttpGet get;
+                    get = new AsyncHttpGet(URI.create(url));
+                    AsyncHttpClient.getDefaultInstance().execute(get, new HttpConnectCallback() {
+                        @Override
+                        public void onConnectCompleted(Exception ex, AsyncHttpResponse response) {
+                            if (ex != null) {
+                                new File(filename).delete();
+                                ex.printStackTrace();
+                                handler.post(completion);
+                                return;
+                            }
+                            try {
+                                final OutputStreamDataCallback o = new OutputStreamDataCallback(new FileOutputStream(filename));
+                                response.setDataCallback(o);
+                                response.setEndCallback(new CompletedCallback() {
+                                    @Override
+                                    public void onCompleted(Exception ex) {
+                                        if (ex != null) {
+                                            ex.printStackTrace();
+                                            handler.post(completion);
+                                            return;
+                                        }
+                                        o.close();
+                                        callback.onDownloadComplete(me, null, filename);
+                                        handler.post(completion);
+                                    }
+                                });
+                            }
+                            catch (Exception e) {
+                                e.printStackTrace();
+                                handler.post(completion);
+                            }
+                        }
+                    });
+                }
+            });
+        }
         
         setContentView(R.layout.main);
         

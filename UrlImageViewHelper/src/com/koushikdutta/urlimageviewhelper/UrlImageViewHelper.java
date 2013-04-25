@@ -722,6 +722,25 @@ public final class UrlImageViewHelper {
     }
 
     /***
+     * Remove a url from the cache
+     * @param url
+     * @return The bitmap removed, if any.
+     */
+    public static Bitmap remove(String url) {
+        new File(getFilenameForUrl(url)).delete();
+        
+        Drawable drawable = mLiveCache.remove(url);
+        if (drawable instanceof ZombieDrawable) {
+            ZombieDrawable zombie = (ZombieDrawable)drawable;
+            Bitmap ret = zombie.getBitmap();
+            zombie.headshot();
+            return ret;
+        }
+        
+        return null;
+    }
+    
+    /***
      * ZombieDrawable refcounts Bitmaps by hooking the finalizer.
      *
      */
