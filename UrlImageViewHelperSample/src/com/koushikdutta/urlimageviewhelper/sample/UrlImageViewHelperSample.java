@@ -21,8 +21,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.animation.ScaleAnimation;
 import android.view.ViewGroup;
+import android.view.animation.OvershootInterpolator;
+import android.view.animation.ScaleAnimation;
 import android.widget.Adapter;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
@@ -139,7 +140,8 @@ public class UrlImageViewHelperSample extends Activity {
                 public void onLoaded(ImageView imageView, Bitmap loadedBitmap, String url, boolean loadedFromCache) {
                     if (!loadedFromCache) {
                         ScaleAnimation scale = new ScaleAnimation(0, 1, 0, 1, ScaleAnimation.RELATIVE_TO_SELF, .5f, ScaleAnimation.RELATIVE_TO_SELF, .5f);
-                        scale.setDuration(140);
+                        scale.setDuration(300);
+                        scale.setInterpolator(new OvershootInterpolator());
                         imageView.startAnimation(scale);
                     }
                 }
