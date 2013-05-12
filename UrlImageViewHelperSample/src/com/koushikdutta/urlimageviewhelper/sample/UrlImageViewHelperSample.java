@@ -19,6 +19,9 @@ import android.database.DataSetObserver;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
@@ -135,7 +138,7 @@ public class UrlImageViewHelperSample extends Activity {
             
             iv.setAnimation(null);
             // yep, that's it. it handles the downloading and showing an interstitial image automagically.
-            UrlImageViewHelper.setUrlDrawable(iv, getItem(position), R.drawable.transparent, new UrlImageViewCallback() {
+            UrlImageViewHelper.setUrlDrawable(iv, getItem(position), R.drawable.loading, new UrlImageViewCallback() {
                 @Override
                 public void onLoaded(ImageView imageView, Bitmap loadedBitmap, String url, boolean loadedFromCache) {
                     if (!loadedFromCache) {
@@ -149,6 +152,19 @@ public class UrlImageViewHelperSample extends Activity {
 
             return convertView;
         }
+    }
+    
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuItem clear = menu.add("Clear Cache");
+        clear.setOnMenuItemClickListener(new OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                UrlImageViewHelper.cleanup(UrlImageViewHelperSample.this, 0);
+                return true;
+            }
+        });
+        return super.onCreateOptionsMenu(menu);
     }
 
     /** Called when the activity is first created. */
