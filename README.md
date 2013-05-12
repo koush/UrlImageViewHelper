@@ -5,8 +5,6 @@ UrlImageViewHelper will fill an ImageView with an image that is found at a URL.
 
 The sample will do a Google Image Search and load/show the results asynchronously.
 
-![](https://raw.github.com/koush/UrlImageViewHelper/master/helper.png)
-.
 ![](https://raw.github.com/koush/UrlImageViewHelper/master/helper2.png)
 
 
