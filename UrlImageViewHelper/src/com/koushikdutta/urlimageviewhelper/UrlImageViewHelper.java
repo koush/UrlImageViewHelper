@@ -1,17 +1,5 @@
 package com.koushikdutta.urlimageviewhelper;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Hashtable;
-
-import org.apache.http.NameValuePair;
-
 import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.content.Context;
@@ -29,6 +17,12 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import org.apache.http.NameValuePair;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Hashtable;
 
 public final class UrlImageViewHelper {
     static void clog(String format, Object... args) {
@@ -42,8 +36,8 @@ public final class UrlImageViewHelper {
     }
 
     public static int copyStream(final InputStream input, final OutputStream output) throws IOException {
-        final byte[] stuff = new byte[1024];
-        int read = 0;
+        final byte[] stuff = new byte[8192];
+        int read;
         int total = 0;
         while ((read = input.read(stuff)) != -1)
         {
@@ -94,14 +88,14 @@ public final class UrlImageViewHelper {
 
 //        Log.v(Constants.LOGTAG,targetWidth);
 //        Log.v(Constants.LOGTAG,targetHeight);
-        FileInputStream stream = null;
+        InputStream stream = null;
         clog("Decoding: " + url + " " + filename);
         try {
             BitmapFactory.Options o = null;
             if (mUseBitmapScaling) {
                 o = new BitmapFactory.Options();
                 o.inJustDecodeBounds = true;
-                stream = new FileInputStream(filename);
+                stream = new BufferedInputStream(new FileInputStream(filename), 8192);
                 BitmapFactory.decodeStream(stream, null, o);
                 stream.close();
                 int scale = 0;
@@ -111,7 +105,7 @@ public final class UrlImageViewHelper {
                 o = new Options();
                 o.inSampleSize = 1 << scale;
             }
-            stream = new FileInputStream(filename);
+            stream = new BufferedInputStream(new FileInputStream(filename), 8192);
             final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
             clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
             return bitmap;
@@ -577,7 +571,8 @@ public final class UrlImageViewHelper {
                         return;
                     String targetFilename = filename;
                     if (in != null) {
-                        FileOutputStream fout = new FileOutputStream(filename);
+                        in = new BufferedInputStream(in, 8192);
+                        OutputStream fout = new BufferedOutputStream(new FileOutputStream(filename), 8192);
                         copyStream(in, fout);
                         fout.close();
                     }
@@ -806,6 +801,10 @@ public final class UrlImageViewHelper {
     @TargetApi(Constants.HONEYCOMB)
     private static void executeTaskHoneycomb(final AsyncTask<Void, Void, Void> task) {
         task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    public static  int getPendingDownloads() {
+        return mPendingDownloads.size();
     }
 
     private static Hashtable<ImageView, String> mPendingViews = new Hashtable<ImageView, String>();

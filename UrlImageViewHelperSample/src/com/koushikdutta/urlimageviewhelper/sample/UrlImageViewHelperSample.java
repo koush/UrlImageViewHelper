@@ -1,18 +1,5 @@
 package com.koushikdutta.urlimageviewhelper.sample;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import android.app.Activity;
 import android.content.Context;
 import android.database.DataSetObserver;
@@ -27,18 +14,21 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.view.animation.OvershootInterpolator;
 import android.view.animation.ScaleAnimation;
-import android.widget.Adapter;
-import android.widget.ArrayAdapter;
-import android.widget.BaseAdapter;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ListView;
-import android.widget.Toast;
-
+import android.widget.*;
 import com.koushikdutta.urlimageviewhelper.UrlImageViewCallback;
 import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
 
 public class UrlImageViewHelperSample extends Activity {
     // turn a stream into a string
@@ -121,7 +111,7 @@ public class UrlImageViewHelperSample extends Activity {
         }
         
     }
-    
+
     private class MyAdapter extends ArrayAdapter<String> {
 
         public MyAdapter(Context context) {
@@ -130,12 +120,11 @@ public class UrlImageViewHelperSample extends Activity {
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            ImageView iv;
             if (convertView == null)
                 convertView = getLayoutInflater().inflate(R.layout.image, null);
 
-            iv = (ImageView)convertView.findViewById(R.id.image);
-            
+            final ImageView iv = (ImageView)convertView.findViewById(R.id.image);
+
             iv.setAnimation(null);
             // yep, that's it. it handles the downloading and showing an interstitial image automagically.
             UrlImageViewHelper.setUrlDrawable(iv, getItem(position), R.drawable.loading, new UrlImageViewCallback() {
@@ -153,7 +142,7 @@ public class UrlImageViewHelperSample extends Activity {
             return convertView;
         }
     }
-    
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuItem clear = menu.add("Clear Cache");
@@ -171,7 +160,7 @@ public class UrlImageViewHelperSample extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         setContentView(R.layout.main);
         
         final Button search = (Button)findViewById(R.id.search);
