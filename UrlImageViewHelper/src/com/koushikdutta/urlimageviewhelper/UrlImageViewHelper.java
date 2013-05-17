@@ -681,6 +681,7 @@ public final class UrlImageViewHelper {
     private static HttpUrlDownloader mHttpDownloader = new HttpUrlDownloader();
     private static ContentUrlDownloader mContentDownloader = new ContentUrlDownloader();
     private static ContactContentUrlDownloader mContactDownloader = new ContactContentUrlDownloader();
+    private static AssetUrlDownloader mAssetDownloader = new AssetUrlDownloader();
     private static FileUrlDownloader mFileDownloader = new FileUrlDownloader();
     private static ArrayList<UrlDownloader> mDownloaders = new ArrayList<UrlDownloader>();
     public static ArrayList<UrlDownloader> getDownloaders() {
@@ -691,6 +692,7 @@ public final class UrlImageViewHelper {
         mDownloaders.add(mHttpDownloader);
         mDownloaders.add(mContactDownloader);
         mDownloaders.add(mContentDownloader);
+        mDownloaders.add(mAssetDownloader);
         mDownloaders.add(mFileDownloader);
     }
     
