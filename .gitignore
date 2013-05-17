@@ -2,3 +2,4 @@ bin
 .settings
 local.properties
 gen
+target
