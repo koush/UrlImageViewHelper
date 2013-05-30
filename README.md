@@ -7,6 +7,18 @@ The sample will do a Google Image Search and load/show the results asynchronousl
 
 ![](https://raw.github.com/koush/UrlImageViewHelper/master/helper2.png)
 
+### Download
+
+Download [the latest JAR](http://repository.sonatype.org/service/local/artifact/maven/redirect?r=central-proxy&g=com.koushikdutta.urlimageviewhelper&a=urlimageviewhelper&v=LATEST
+) or grab via Maven:
+
+```xml
+<dependency>
+    <groupId>com.koushikdutta.urlimageviewhelper</groupId>
+    <artifactId>urlimageviewhelper</artifactId>
+    <version>(insert latest version)</version>
+</dependency>
+```
 
 ### Usage
 
