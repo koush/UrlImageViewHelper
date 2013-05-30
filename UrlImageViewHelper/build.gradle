@@ -38,7 +38,7 @@ signing {
     sign configurations.archives
 }
 
-'git remote -v'.execute().getText().find('git@github.com:(.*?)/(.*?).git') {
+'git remote -v'.execute(null, new File(file('.').absolutePath)).getText().find('git@github.com:(.*?)/(.*?).git') {
     match ->
         user = match[1]
         repo = match[2]
