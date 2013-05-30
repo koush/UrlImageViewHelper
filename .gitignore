@@ -3,3 +3,4 @@ bin
 local.properties
 gen
 target
+.DS_Store
