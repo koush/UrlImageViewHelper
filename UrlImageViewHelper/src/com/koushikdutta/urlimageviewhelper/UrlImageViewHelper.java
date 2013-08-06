@@ -542,7 +542,7 @@ public final class UrlImageViewHelper {
         }
 
         final ArrayList<ImageView> currentDownload = mPendingDownloads.get(url);
-        if (currentDownload != null) {
+        if (currentDownload != null && currentDownload.size() != 0) {
             // Also, multiple vies may be waiting for this url.
             // So, let's maintain a list of these views.
             // When the url is downloaded, it sets the imagedrawable for
