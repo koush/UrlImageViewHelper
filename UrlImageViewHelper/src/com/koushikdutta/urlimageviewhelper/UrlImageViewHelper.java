@@ -679,6 +679,7 @@ public final class UrlImageViewHelper {
     }
     
     private static HttpUrlDownloader mHttpDownloader = new HttpUrlDownloader();
+    private static HttpsUrlDownloader mHttpsDownloader = new HttpsUrlDownloader();
     private static ContentUrlDownloader mContentDownloader = new ContentUrlDownloader();
     private static ContactContentUrlDownloader mContactDownloader = new ContactContentUrlDownloader();
     private static AssetUrlDownloader mAssetDownloader = new AssetUrlDownloader();
@@ -690,10 +691,21 @@ public final class UrlImageViewHelper {
     
     static {
         mDownloaders.add(mHttpDownloader);
+        mDownloaders.add(mHttpsDownloader);
         mDownloaders.add(mContactDownloader);
         mDownloaders.add(mContentDownloader);
         mDownloaders.add(mAssetDownloader);
         mDownloaders.add(mFileDownloader);
+    }
+    
+    private static boolean sTrustAll = false;
+    
+    public static void trustAllCerts(boolean trust) {
+    	sTrustAll = trust;
+    }
+    
+    protected static boolean isTrustAllCerts() {
+    	return sTrustAll;
     }
     
     public static interface RequestPropertiesCallback {
