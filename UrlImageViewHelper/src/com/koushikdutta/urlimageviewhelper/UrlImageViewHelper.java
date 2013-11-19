@@ -107,6 +107,7 @@ public final class UrlImageViewHelper {
             }
             stream = new BufferedInputStream(new FileInputStream(filename), 8192);
             final Bitmap bitmap = BitmapFactory.decodeStream(stream, null, o);
+            bitmap.setDensity(160);
             clog(String.format("Loaded bitmap (%dx%d).", bitmap.getWidth(), bitmap.getHeight()));
             return bitmap;
         } catch (final IOException e) {
