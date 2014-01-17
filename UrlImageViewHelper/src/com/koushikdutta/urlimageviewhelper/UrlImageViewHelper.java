@@ -666,7 +666,15 @@ public final class UrlImageViewHelper {
         
         for (UrlDownloader downloader: mDownloaders) {
             if (downloader.canDownloadUrl(url)) {
-                downloader.download(context, url, filename, loader, completion);
+                try {
+                    downloader.download(context, url, filename, loader, completion);
+                } catch (Exception e) {
+                    clog("Can't download from url: " + url + " Exception: " + e.getMessage());
+                    mPendingDownloads.remove(url);
+                    if (imageView != null) {
+                        mPendingViews.remove(imageView);
+                    }
+                }
                 return;
             }
         }
