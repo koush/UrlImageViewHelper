@@ -1,3 +1,7 @@
+# This library has been deprecated, use ion instead:
+
+http://github.com/koush/ion
+
 ## UrlImageViewHelper
 UrlImageViewHelper will fill an ImageView with an image that is found at a URL.
 
