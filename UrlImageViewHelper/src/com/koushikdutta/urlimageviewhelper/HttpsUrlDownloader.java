@@ -3,17 +3,26 @@ package com.koushikdutta.urlimageviewhelper;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
 import org.apache.http.NameValuePair;
+
+import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper.RequestPropertiesCallback;
 
 import android.content.Context;
 import android.os.AsyncTask;
 
-import com.koushikdutta.urlimageviewhelper.UrlImageViewHelper.RequestPropertiesCallback;
-
-public class HttpUrlDownloader implements UrlDownloader {
-    private RequestPropertiesCallback mRequestPropertiesCallback;
+public class HttpsUrlDownloader implements UrlDownloader {
+	private RequestPropertiesCallback mRequestPropertiesCallback;
 
     public RequestPropertiesCallback getRequestPropertiesCallback() {
         return mRequestPropertiesCallback;
@@ -24,6 +33,32 @@ public class HttpUrlDownloader implements UrlDownloader {
     }
 
 
+    private final TrustManager[] mTrustAllCerts = new TrustManager[] { new X509TrustManager() {
+		
+		@Override
+		public X509Certificate[] getAcceptedIssuers() {
+			return null;
+		}
+		
+		@Override
+		public void checkServerTrusted(X509Certificate[] chain, String authType)
+				throws CertificateException {
+		}
+		
+		@Override
+		public void checkClientTrusted(X509Certificate[] chain, String authType)
+				throws CertificateException {
+		}
+	} };
+    
+    private final HostnameVerifier mAllHostsValid = new HostnameVerifier() {
+		@Override
+		public boolean verify(String hostname, SSLSession session) {
+			return true;
+		}
+    };
+    
+    
     @Override
     public void download(final Context context, final String url, final String filename, final UrlDownloaderCallback callback, final Runnable completion) {
         final AsyncTask<Void, Void, Void> downloader = new AsyncTask<Void, Void, Void>() {
@@ -33,11 +68,20 @@ public class HttpUrlDownloader implements UrlDownloader {
                     InputStream is = null;
 
                     String thisUrl = url;
-                    HttpURLConnection urlConnection;
+                    HttpsURLConnection urlConnection;
+                    
+                	final SSLContext sc = SSLContext.getInstance("SSL");
+                    sc.init(null, mTrustAllCerts, new java.security.SecureRandom());
+                    
                     while (true) {
                         final URL u = new URL(thisUrl);
-                        urlConnection = (HttpURLConnection)u.openConnection();
+                        urlConnection = (HttpsURLConnection) u.openConnection();
                         urlConnection.setInstanceFollowRedirects(true);
+                        
+                        if(UrlImageViewHelper.isTrustAllCerts()) {
+                        	urlConnection.setSSLSocketFactory(sc.getSocketFactory());
+                        	urlConnection.setHostnameVerifier(mAllHostsValid);                        	
+                        }
 
                         if (mRequestPropertiesCallback != null) {
                             final ArrayList<NameValuePair> props = mRequestPropertiesCallback.getHeadersForRequest(context, url);
@@ -58,7 +102,7 @@ public class HttpUrlDownloader implements UrlDownloader {
                         return null;
                     }
                     is = urlConnection.getInputStream();
-                    callback.onDownloadComplete(HttpUrlDownloader.this, is, null);
+                    callback.onDownloadComplete(HttpsUrlDownloader.this, is, null);
                     return null;
                 }
                 catch (final Throwable e) {
@@ -83,6 +127,7 @@ public class HttpUrlDownloader implements UrlDownloader {
     
     @Override
     public boolean canDownloadUrl(String url) {
-        return url.startsWith("http://");
+        return url.startsWith("https://");
     }
+
 }
